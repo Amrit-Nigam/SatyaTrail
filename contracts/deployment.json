@@ -1,0 +1,12 @@
+{
+  "network": "bsc",
+  "deployer": "0x71AfE44200A819171a0687b1026E8d4424472Ff8",
+  "deploymentTime": "2025-08-22T16:44:38.597Z",
+  "contracts": {
+    "fairBNB": {
+      "address": "0x273806d29F1883b1AF5D51fFA6650c4adF26796c",
+      "name": "FairBNB Property",
+      "symbol": "FBNB"
+    }
+  }
+}
