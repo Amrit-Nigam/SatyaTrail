@@ -33,7 +33,7 @@ export default function TrailGraph({ nodes, edges, selectedNodeId, onSelectNode 
   }, [onSelectNode])
 
   // Reset camera view
-  const handleReset = useCallback(() => {
+  const handleReset = useCallback(() => {``
     if (controlsRef.current) {
       controlsRef.current.reset()
       controlsRef.current.target.set(0, 0, 0)

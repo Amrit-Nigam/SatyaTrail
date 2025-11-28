@@ -12,7 +12,7 @@ import {
   XCircle,
   AlertCircle
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import NBCard from '../components/NBCard'
 import NBButton from '../components/NBButton'
 import NewsTile from '../components/NewsTile'
@@ -87,8 +87,32 @@ const faqs = [
 
 export default function Landing() {
   const [openFaq, setOpenFaq] = useState(null)
-  const trendingArticles = articlesService.listTrending(6)
-  const liveExamples = articlesService.listTrending(3)
+  const [trendingArticles, setTrendingArticles] = useState([])
+  const [liveExamples, setLiveExamples] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true)
+        const [trending, examples] = await Promise.all([
+          articlesService.listTrending(6),
+          articlesService.listTrending(3)
+        ])
+        setTrendingArticles(trending)
+        setLiveExamples(examples)
+      } catch (error) {
+        console.error('Failed to fetch trending articles:', error)
+        // Set empty arrays on error to prevent crashes
+        setTrendingArticles([])
+        setLiveExamples([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   return (
     <div className="min-h-screen">
@@ -152,24 +176,34 @@ export default function Landing() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {trendingArticles.map((article, index) => (
-              <motion.div
-                key={article.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-              >
-                <NewsTile
-                  id={article.id}
-                  headline={article.headline}
-                  sourceName={article.sourceName}
-                  publishedAt={article.publishedAt}
-                  category={article.category}
-                  snippet={article.body}
-                  verdict={article.verdict}
-                />
-              </motion.div>
-            ))}
+            {isLoading ? (
+              <div className="col-span-full text-center py-8 text-nb-ink/70">
+                Loading trending stories...
+              </div>
+            ) : trendingArticles.length === 0 ? (
+              <div className="col-span-full text-center py-8 text-nb-ink/70">
+                No trending stories available yet. Verify a claim to get started!
+              </div>
+            ) : (
+              trendingArticles.map((article, index) => (
+                <motion.div
+                  key={article.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                >
+                  <NewsTile
+                    id={article.id}
+                    headline={article.headline}
+                    sourceName={article.sourceName}
+                    publishedAt={article.publishedAt}
+                    category={article.category}
+                    snippet={article.body}
+                    verdict={article.verdict}
+                  />
+                </motion.div>
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -244,23 +278,33 @@ export default function Landing() {
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {liveExamples.map((article) => (
-              <NBCard key={article.id} className="flex flex-col gap-3">
-                <h4 className="font-display font-semibold line-clamp-2">
-                  {article.headline}
-                </h4>
-                <p className="text-sm text-nb-ink/60">{article.sourceName}</p>
-                <div className="flex items-center justify-between mt-auto pt-3 border-t border-nb-ink/10">
-                  <VerdictBadge verdict={article.verdict} showConfidence confidence={article.confidence} size="sm" />
-                  <Link
-                    to={`/article/${article.id}`}
-                    className="text-sm font-medium text-nb-accent-2 hover:underline"
-                  >
-                    View →
-                  </Link>
-                </div>
-              </NBCard>
-            ))}
+            {isLoading ? (
+              <div className="col-span-full text-center py-8 text-nb-ink/70">
+                Loading examples...
+              </div>
+            ) : liveExamples.length === 0 ? (
+              <div className="col-span-full text-center py-8 text-nb-ink/70">
+                No examples available yet. Verify a claim to see it here!
+              </div>
+            ) : (
+              liveExamples.map((article) => (
+                <NBCard key={article.id} className="flex flex-col gap-3">
+                  <h4 className="font-display font-semibold line-clamp-2">
+                    {article.headline}
+                  </h4>
+                  <p className="text-sm text-nb-ink/60">{article.sourceName}</p>
+                  <div className="flex items-center justify-between mt-auto pt-3 border-t border-nb-ink/10">
+                    <VerdictBadge verdict={article.verdict} showConfidence confidence={article.confidence} size="sm" />
+                    <Link
+                      to={`/article/${article.id}`}
+                      className="text-sm font-medium text-nb-accent-2 hover:underline"
+                    >
+                      View →
+                    </Link>
+                  </div>
+                </NBCard>
+              ))
+            )}
           </div>
         </div>
       </section>

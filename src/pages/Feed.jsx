@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Frown, ArrowLeft, ArrowRight } from 'lucide-react'
+import { Frown, ArrowLeft, ArrowRight, Loader2, RefreshCw } from 'lucide-react'
 import FeedFilterBar from '../components/FeedFilterBar'
 import NewsTile from '../components/NewsTile'
 import NBCard from '../components/NBCard'
@@ -15,6 +15,13 @@ export default function Feed() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { viewMode } = useUIStore()
 
+  // State
+  const [articles, setArticles] = useState([])
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
+
   // Parse query params
   const query = useMemo(() => ({
     category: searchParams.get('category') || undefined,
@@ -25,11 +32,27 @@ export default function Feed() {
     limit: 12
   }), [searchParams])
 
-  // Fetch articles
-  const { articles, total, page, totalPages } = useMemo(
-    () => articlesService.listAll(query),
-    [query]
-  )
+  // Fetch articles from backend
+  useEffect(() => {
+    const fetchArticles = async () => {
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const result = await articlesService.listAll(query)
+        setArticles(result.articles)
+        setTotal(result.total)
+        setTotalPages(result.totalPages)
+      } catch (err) {
+        console.error('Failed to fetch articles:', err)
+        setError('Failed to load articles. Please try again.')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchArticles()
+  }, [query])
 
   const handlePageChange = (newPage) => {
     const newParams = new URLSearchParams(searchParams)
@@ -38,17 +61,37 @@ export default function Feed() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const handleRefresh = async () => {
+    setIsLoading(true)
+    await articlesService.refreshCache()
+    const result = await articlesService.listAll(query)
+    setArticles(result.articles)
+    setTotal(result.total)
+    setTotalPages(result.totalPages)
+    setIsLoading(false)
+  }
+
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="font-display text-3xl font-bold text-nb-ink mb-2">
-            News Feed
-          </h1>
-          <p className="text-nb-ink/70">
-            Browse all news articles with filters and sorting
-          </p>
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <h1 className="font-display text-3xl font-bold text-nb-ink mb-2">
+              Verified News Feed
+            </h1>
+            <p className="text-nb-ink/70">
+              Browse verified news and fact-checks from our AI agents
+            </p>
+          </div>
+          <NBButton
+            variant="ghost"
+            onClick={handleRefresh}
+            disabled={isLoading}
+            icon={RefreshCw}
+          >
+            Refresh
+          </NBButton>
         </div>
 
         {/* Filter Bar */}
@@ -59,7 +102,7 @@ export default function Feed() {
         {/* Results Count */}
         <div className="mb-4 flex items-center justify-between">
           <p className="text-sm text-nb-ink/60">
-            Showing {articles.length} of {total} articles
+            {isLoading ? 'Loading...' : `Showing ${articles.length} of ${total} verifications`}
           </p>
           {query.q && (
             <p className="text-sm text-nb-ink/60">
@@ -68,8 +111,26 @@ export default function Feed() {
           )}
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-nb-ink/50" />
+            <span className="ml-3 text-nb-ink/60">Loading verifications...</span>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !isLoading && (
+          <NBCard className="text-center py-12">
+            <p className="text-nb-red font-medium mb-4">{error}</p>
+            <NBButton variant="primary" onClick={handleRefresh}>
+              Try Again
+            </NBButton>
+          </NBCard>
+        )}
+
         {/* Articles */}
-        {articles.length > 0 ? (
+        {!isLoading && !error && articles.length > 0 && (
           <>
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -106,7 +167,7 @@ export default function Feed() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
                             <span className="text-xs px-2 py-0.5 bg-nb-accent-2/20 rounded-full border border-nb-ink/20 font-medium">
-                              {article.category}
+                              {article.category || 'Verification'}
                             </span>
                             <span className="text-xs text-nb-ink/50">
                               {timeAgo(article.publishedAt)}
@@ -144,19 +205,19 @@ export default function Feed() {
               <div className="mt-8 flex items-center justify-center gap-4">
                 <NBButton
                   variant="ghost"
-                  onClick={() => handlePageChange(page - 1)}
-                  disabled={page <= 1}
+                  onClick={() => handlePageChange(query.page - 1)}
+                  disabled={query.page <= 1}
                   icon={ArrowLeft}
                 >
                   Previous
                 </NBButton>
                 <span className="text-sm text-nb-ink/70">
-                  Page {page} of {totalPages}
+                  Page {query.page} of {totalPages}
                 </span>
                 <NBButton
                   variant="ghost"
-                  onClick={() => handlePageChange(page + 1)}
-                  disabled={page >= totalPages}
+                  onClick={() => handlePageChange(query.page + 1)}
+                  disabled={query.page >= totalPages}
                 >
                   Next
                   <ArrowRight className="w-4 h-4" />
@@ -164,26 +225,38 @@ export default function Feed() {
               </div>
             )}
           </>
-        ) : (
-          /* Empty State */
+        )}
+
+        {/* Empty State */}
+        {!isLoading && !error && articles.length === 0 && (
           <NBCard className="text-center py-12">
             <Frown className="w-16 h-16 mx-auto text-nb-ink/30 mb-4" />
             <h3 className="font-display text-xl font-semibold mb-2">
-              No articles found
+              No verifications found
             </h3>
             <p className="text-nb-ink/60 mb-6">
-              Try adjusting your filters or search query
+              {total === 0
+                ? 'No verifications yet. Submit a claim to get started!'
+                : 'Try adjusting your filters or search query'}
             </p>
-            <NBButton
-              variant="ghost"
-              onClick={() => setSearchParams({})}
-            >
-              Clear all filters
-            </NBButton>
+            <div className="flex gap-4 justify-center">
+              <Link to="/verify">
+                <NBButton variant="primary">
+                  Verify Something
+                </NBButton>
+              </Link>
+              {(query.category || query.verdict || query.q) && (
+                <NBButton
+                  variant="ghost"
+                  onClick={() => setSearchParams({})}
+                >
+                  Clear all filters
+                </NBButton>
+              )}
+            </div>
           </NBCard>
         )}
       </div>
     </div>
   )
 }
-

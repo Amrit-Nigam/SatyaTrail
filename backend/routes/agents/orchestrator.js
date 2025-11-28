@@ -5,13 +5,14 @@
  * and produces final verdicts with weighted scoring.
  */
 
+const crypto = require('crypto');
 const logger = require('../../utils/logger');
 const openaiService = require('../../services/openaiService');
 const tavilyService = require('../../services/tavilyService');
 const graphService = require('../../services/graphService');
 const blockchainService = require('../../services/blockchainService');
 const reputationSystem = require('../../utils/reputationSystem');
-const pLimit = require('p-limit');
+const pLimit = require('p-limit').default || require('p-limit');
 
 // Import all agents
 const toiAgent = require('./toiAgent');
@@ -21,6 +22,9 @@ const genericAgent = require('./genericAgent');
 
 // Concurrency limit for parallel agent execution
 const limit = pLimit(4);
+
+// Test mode can be enabled via environment variable
+const ENV_TEST_MODE = process.env.VERIFICATION_TEST_MODE === 'true';
 
 class Orchestrator {
   constructor() {
@@ -37,19 +41,77 @@ class Orchestrator {
   }
 
   /**
+   * Generate mock verification result for testing
+   * @param {Object} params - Verification parameters
+   * @returns {Object} Mock verification result
+   */
+  generateMockResult(params) {
+    const { url, text, source = 'frontend', agents: requestedAgents } = params;
+    const claim = text || url || 'Test claim';
+    const agentsUsed = requestedAgents || this.defaultAgents;
+    const hash = crypto.createHash('sha256').update(claim + Date.now()).digest('hex');
+
+    return {
+      verdict: 'mixed',
+      accuracy_score: 75,
+      confidence: 0.8,
+      agent_reports: agentsUsed.map(agentName => ({
+        agent_name: agentName === 'toi' ? 'Times of India Agent' :
+                   agentName === 'ndtv' ? 'NDTV Agent' :
+                   agentName === 'indiaTimes' ? 'India Times Agent' : 'Generic Verification Agent',
+        credibility_score: 70 + Math.floor(Math.random() * 20),
+        summary: `Mock verification result for: ${claim.substring(0, 50)}...`,
+        evidence_links: ['https://example.com/source1', 'https://example.com/source2'],
+        reasoning: 'This is a mock verification result for testing purposes.'
+      })),
+      source_graph: {
+        nodes: [
+          { id: 'node_0', url: url || 'https://example.com/original', title: 'Original Source', role: 'origin' },
+          { id: 'node_1', url: 'https://example.com/amplifier', title: 'Amplifier Source', role: 'amplifier' }
+        ],
+        edges: [
+          { from: 'node_0', to: 'node_1', relationship: 'amplifies' }
+        ],
+        hash
+      },
+      blockchain_hash: `0x${hash.substring(0, 40)}`,
+      timestamp: new Date().toISOString(),
+      metadata: {
+        claim,
+        source,
+        url: url || null,
+        processing_time_ms: 150,
+        agents_used: agentsUsed,
+        evidence_count: 5,
+        consensus: 'Agents generally agree on the mixed verdict',
+        remaining_uncertainties: ['Some details could not be independently verified'],
+        test_mode: true
+      }
+    };
+  }
+
+  /**
    * Run full verification pipeline
    * @param {Object} params - Verification parameters
    * @param {string} params.url - Article URL (optional)
    * @param {string} params.text - Raw text to verify (optional)
    * @param {string} params.source - Request source (frontend, telegram, twitter, extension)
    * @param {string[]} params.agents - List of agents to use (optional)
+   * @param {boolean} params.testMode - Force test mode (optional)
    * @returns {Promise<Object>} Complete verification result
    */
   async verify(params) {
-    const { url, text, source = 'frontend', agents: requestedAgents } = params;
+    const { url, text, source = 'frontend', agents: requestedAgents, testMode } = params;
     const startTime = Date.now();
+    const useTestMode = testMode || ENV_TEST_MODE;
     
-    logger.info('Orchestrator: Starting verification', { url, source, hasText: !!text });
+    logger.info('Orchestrator: Starting verification', { url, source, hasText: !!text, testMode: useTestMode });
+
+    // Return mock result in test mode
+    if (useTestMode) {
+      logger.info('Orchestrator: Running in TEST MODE - returning mock result');
+      return this.generateMockResult(params);
+    }
 
     try {
       // Step 1: Extract or use provided claim
@@ -282,20 +344,27 @@ class Orchestrator {
   async verifyQuick(params) {
     const { url, text } = params;
     
-    // Use only generic agent for speed
-    const result = await this.verify({
-      ...params,
-      agents: ['generic']
-    });
+    try {
+      // Use only generic agent for speed
+      const result = await this.verify({
+        ...params,
+        agents: ['generic']
+      });
 
-    // Return compact response
-    return {
-      verdict: result.verdict,
-      accuracy_score: result.accuracy_score,
-      summary: result.agent_reports[0]?.summary || 'Unable to verify',
-      detail_url: `/api/v1/verify?url=${encodeURIComponent(url || '')}`,
-      timestamp: result.timestamp
-    };
+      // Return compact response with source_graph
+      return {
+        verdict: result.verdict,
+        accuracy_score: result.accuracy_score,
+        confidence: result.confidence,
+        summary: result.agent_reports[0]?.summary || 'Unable to verify',
+        source_graph: result.source_graph,
+        metadata: result.metadata,
+        timestamp: result.timestamp
+      };
+    } catch (error) {
+      logger.error('Quick verification failed', { error: error.message, url });
+      throw error;
+    }
   }
 
   /**

@@ -1,46 +1,41 @@
-import { nodesService } from './nodesService'
-import { articlesService } from './articlesService'
+import { apiClient, APIError } from '../api/client'
 
-// Store for verification sessions
+// Store for verification sessions (local cache)
 let sessions = []
 let messageIdCounter = 1
 
-// Generate a unique ID
+// Generate unique IDs
 const generateId = () => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 const generateMessageId = () => `msg_${messageIdCounter++}`
 
-// Demo claims for the dropdown
+// Demo claims for the dropdown (still useful for quick testing)
 const demoClaims = [
   {
     id: "demo_1",
-    text: "Government announced a new urban transport policy for major metros.",
-    linkedNodeId: "node_001"
+    text: "Government announced a new urban transport policy for major metros."
   },
   {
     id: "demo_2",
-    text: "A subway tunnel has collapsed in the city causing casualties.",
-    linkedNodeId: "node_002"
+    text: "A subway tunnel has collapsed in the city causing casualties."
   },
   {
     id: "demo_3",
-    text: "A tech startup raised $50M for AI healthcare diagnostics.",
-    linkedNodeId: "node_003"
+    text: "A tech startup raised $50M for AI healthcare diagnostics."
   },
   {
     id: "demo_4",
-    text: "A celebrity-endorsed weight loss pill can cause dramatic weight loss without diet.",
-    linkedNodeId: "node_004"
+    text: "A celebrity-endorsed weight loss pill can cause dramatic weight loss without diet."
   }
 ]
 
 /**
- * Create mock chat messages for a verification session
+ * Convert backend response to chat messages
  * @param {string} sessionId - Session ID
- * @param {string} inputValue - The claim or URL being verified
- * @param {Object|null} linkedNode - Linked news node if found
+ * @param {string} inputValue - Original input
+ * @param {Object} result - Backend verification result
  * @returns {Array} - Array of chat messages
  */
-const createMockMessages = (sessionId, inputValue, linkedNode) => {
+const convertToMessages = (sessionId, inputValue, result) => {
   const now = new Date()
   const messages = []
 
@@ -58,110 +53,114 @@ const createMockMessages = (sessionId, inputValue, linkedNode) => {
     id: generateMessageId(),
     sessionId,
     sender: "orchestrator",
-    content: "I've received your claim for verification. Let me coordinate with our specialized agents to analyze this.",
+    content: "I've received your claim for verification. Coordinating with our AI agents to analyze this...",
     createdAt: new Date(now.getTime() + 1000).toISOString()
   })
 
-  // Source agent analysis
-  messages.push({
-    id: generateMessageId(),
-    sessionId,
-    sender: "source_agent",
-    content: linkedNode 
-      ? `I've identified ${linkedNode.articleIds.length} article(s) related to this claim. The primary source is "${articlesService.getById(linkedNode.primaryArticleId)?.sourceName || 'Unknown'}". Analyzing source reputation and propagation patterns...`
-      : "Searching our database for related articles and sources. Analyzing content patterns and source credibility...",
-    createdAt: new Date(now.getTime() + 3000).toISOString()
-  })
-
-  // Factbase agent analysis
-  messages.push({
-    id: generateMessageId(),
-    sessionId,
-    sender: "factbase_agent",
-    content: linkedNode
-      ? `Cross-referencing with fact-check databases and official records. Found ${linkedNode.articleIds.length > 1 ? 'multiple corroborating sources' : 'relevant data points'}. ${linkedNode.agentsSummary}`
-      : "Checking claim against known fact-check databases and verified information sources. Running semantic similarity analysis...",
-    createdAt: new Date(now.getTime() + 5000).toISOString()
-  })
-
-  // Orchestrator summary
-  const verdict = linkedNode?.verdict || 'unclear'
-  const confidence = linkedNode?.confidence || 0.4
-  const verdictLabels = {
-    likely_true: "Likely True",
-    likely_false: "Likely False",
-    mixed: "Mixed",
-    unclear: "Unclear",
-    unchecked: "Unchecked"
+  // Add agent reports as messages
+  if (result.agent_reports && result.agent_reports.length > 0) {
+    result.agent_reports.forEach((report, index) => {
+      messages.push({
+        id: generateMessageId(),
+        sessionId,
+        sender: report.agent_name.toLowerCase().replace(/\s+/g, '_') + '_agent',
+        content: `**${report.agent_name}** (Credibility: ${Math.round((report.credibility_score || 0.5) * 100)}%)\n\n${report.summary}\n\n${report.reasoning ? `_Reasoning: ${report.reasoning}_` : ''}`,
+        createdAt: new Date(now.getTime() + (index + 2) * 2000).toISOString()
+      })
+    })
   }
+
+  // Final verdict message
+  const verdictLabels = {
+    true: "✅ Likely True",
+    false: "❌ Likely False",
+    mixed: "⚠️ Mixed",
+    unknown: "❓ Unknown"
+  }
+
+  const verdictLabel = verdictLabels[result.verdict?.toLowerCase()] || verdictLabels.unknown
+  const accuracy = Math.round((result.accuracy_score || 0.5) * 100)
 
   messages.push({
     id: generateMessageId(),
     sessionId,
     sender: "orchestrator",
-    content: `**Verification Complete**\n\n**Verdict: ${verdictLabels[verdict]}** (Confidence: ${Math.round(confidence * 100)}%)\n\n${linkedNode 
-      ? `Based on our analysis of ${linkedNode.articleIds.length} related article(s) and cross-referencing with fact-check databases, this claim has been assessed as **${verdictLabels[verdict]}**.\n\n${linkedNode.summary}\n\nYou can view the full trail graph to see how this story propagated across sources.`
-      : `This claim could not be definitively linked to our tracked news events. The verification is based on general pattern analysis and may require manual review.\n\nWe recommend checking official sources and established fact-checking organizations for more information.`
-    }`,
-    createdAt: new Date(now.getTime() + 7000).toISOString()
+    content: `**Verification Complete**\n\n**Verdict: ${verdictLabel}**\n**Accuracy Score: ${accuracy}%**\n\n${result.metadata?.claim ? `**Claim analyzed:** ${result.metadata.claim}\n\n` : ''}${result.agent_reports?.length > 0 ? `Based on analysis from ${result.agent_reports.length} specialized agent(s)` : 'Analysis complete'}.${result.blockchain_hash ? `\n\n🔗 _Blockchain hash: ${result.blockchain_hash.slice(0, 16)}..._` : ''}${result.metadata?.remaining_uncertainties ? `\n\n⚠️ _Note: ${result.metadata.remaining_uncertainties}_` : ''}`,
+    createdAt: new Date(now.getTime() + (result.agent_reports?.length || 0) * 2000 + 3000).toISOString()
   })
 
   return messages
 }
 
 /**
- * Start a new verification session
+ * Map backend verdict to frontend verdict format
+ */
+const mapVerdict = (verdict) => {
+  const map = {
+    'true': 'likely_true',
+    'false': 'likely_false',
+    'mixed': 'mixed',
+    'unknown': 'unclear'
+  }
+  return map[verdict?.toLowerCase()] || 'unclear'
+}
+
+/**
+ * Start a new verification session using real backend
  * @param {Object} input - Input data
  * @param {string} input.type - "url" | "text" | "demo"
  * @param {string} input.value - The URL, text, or demo claim ID
- * @returns {Object} - { session, messages }
+ * @returns {Promise<Object>} - { session, messages, result }
  */
-const startSession = (input) => {
+const startSession = async (input) => {
   const sessionId = generateId()
   const now = new Date().toISOString()
 
   let inputValue = input.value
-  let linkedNode = null
+  let isUrl = input.type === 'url'
 
   // Handle demo claims
   if (input.type === 'demo') {
     const demoClaim = demoClaims.find(d => d.id === input.value)
     if (demoClaim) {
       inputValue = demoClaim.text
-      linkedNode = nodesService.getById(demoClaim.linkedNodeId)
-    }
-  } else {
-    // Try to find a matching node by searching claims
-    const matchingNode = nodesService.newsNodes.find(n => 
-      inputValue.toLowerCase().includes(n.canonicalClaim.toLowerCase().slice(0, 30)) ||
-      n.canonicalClaim.toLowerCase().includes(inputValue.toLowerCase().slice(0, 30))
-    )
-    if (matchingNode) {
-      linkedNode = matchingNode
+      isUrl = false
     }
   }
 
+  // Call the backend API
+  const result = await apiClient.verify({
+    url: isUrl ? inputValue : undefined,
+    text: !isUrl ? inputValue : undefined,
+    source: 'frontend'
+  })
+
+  // Create session object
   const session = {
     id: sessionId,
     createdAt: now,
     inputType: input.type,
     inputValue,
-    linkedNewsNodeId: linkedNode?.id || null,
-    finalVerdict: linkedNode?.verdict || 'unclear',
-    finalConfidence: linkedNode?.confidence || 0.4
+    linkedNewsNodeId: result.source_graph?.hash || null,
+    finalVerdict: mapVerdict(result.verdict),
+    finalConfidence: result.accuracy_score || 0.5,
+    blockchainHash: result.blockchain_hash,
+    sourceGraph: result.source_graph
   }
 
-  const messages = createMockMessages(sessionId, inputValue, linkedNode)
+  // Convert to chat messages
+  const messages = convertToMessages(sessionId, inputValue, result)
 
-  sessions.push({ session, messages })
+  // Store in local cache
+  sessions.push({ session, messages, result })
 
-  return { session, messages }
+  return { session, messages, result }
 }
 
 /**
- * Get an existing verification session
+ * Get an existing verification session from cache
  * @param {string} sessionId - Session ID
- * @returns {Object|null} - { session, messages } or null if not found
+ * @returns {Object|null} - { session, messages, result } or null if not found
  */
 const getSession = (sessionId) => {
   const found = sessions.find(s => s.session.id === sessionId)
@@ -170,6 +169,7 @@ const getSession = (sessionId) => {
 
 /**
  * Send a follow-up message in a session
+ * For now, this is handled locally since the backend doesn't support chat
  * @param {string} sessionId - Session ID
  * @param {string} content - Message content
  * @returns {Object|null} - Updated { session, messages } or null if session not found
@@ -194,7 +194,7 @@ const sendMessage = (sessionId, content) => {
     id: generateMessageId(),
     sessionId,
     sender: "orchestrator",
-    content: "Thank you for your follow-up. Our verification system is demo-only at this time, but in a full implementation, I would coordinate additional analysis based on your query. Is there anything specific about the trail or sources you'd like to explore?",
+    content: "Thank you for your follow-up question. Based on our previous analysis, I can provide additional context. Is there a specific aspect of the verification you'd like me to elaborate on?",
     createdAt: new Date(now.getTime() + 1500).toISOString()
   })
 
@@ -213,22 +213,51 @@ const listSessions = () => {
 }
 
 /**
- * Create a session from an article ID
- * @param {string} articleId - Article ID
- * @returns {Object} - { session, messages }
+ * Get recent verifications from backend
+ * @param {number} limit - Number of results
+ * @returns {Promise<Array>}
  */
-const startSessionFromArticle = (articleId) => {
-  const article = articlesService.getById(articleId)
-  if (!article) {
-    return startSession({ type: 'text', value: 'Unknown article' })
+const getRecentVerifications = async (limit = 10) => {
+  try {
+    const data = await apiClient.getRecentVerifications(limit)
+    return data.verifications || []
+  } catch (error) {
+    console.error('Failed to fetch recent verifications:', error)
+    return []
   }
+}
 
-  const node = nodesService.getByArticleId(articleId)
-  
+/**
+ * Get verification by hash from backend
+ * @param {string} hash - Graph hash
+ * @returns {Promise<Object|null>}
+ */
+const getVerificationByHash = async (hash) => {
+  try {
+    return await apiClient.getVerification(hash)
+  } catch (error) {
+    console.error('Failed to fetch verification:', error)
+    return null
+  }
+}
+
+/**
+ * Create a session from an article headline
+ * @param {string} headline - Article headline
+ * @returns {Promise<Object>} - { session, messages }
+ */
+const startSessionFromArticle = async (headline) => {
   return startSession({
-    type: 'demo',
-    value: node ? demoClaims.find(d => d.linkedNodeId === node.id)?.id || article.headline : article.headline
+    type: 'text',
+    value: headline
   })
+}
+
+/**
+ * Clear all local sessions
+ */
+const clearSessions = () => {
+  sessions = []
 }
 
 export const verificationService = {
@@ -237,6 +266,10 @@ export const verificationService = {
   sendMessage,
   listSessions,
   startSessionFromArticle,
+  getRecentVerifications,
+  getVerificationByHash,
+  clearSessions,
   demoClaims
 }
 
+export { APIError }

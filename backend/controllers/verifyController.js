@@ -17,12 +17,13 @@ class VerifyController {
    */
   async verify(req, res) {
     const startTime = Date.now();
-    const { url, text, source = 'frontend' } = req.body;
+    const { url, text, source = 'frontend', testMode } = req.body;
 
     logger.verification('Request received', {
       url,
       hasText: !!text,
       source,
+      testMode,
       ip: req.ip
     });
 
@@ -40,61 +41,70 @@ class VerifyController {
       const result = await orchestrator.verify({
         url,
         text,
-        source
+        source,
+        testMode
       });
 
-      // Save to database
-      const sourceGraph = new SourceGraph({
-        hash: result.source_graph.hash,
-        claim: result.metadata.claim,
-        nodes: result.source_graph.nodes,
-        edges: result.source_graph.edges,
-        clusters: [],
-        metadata: {
-          sourceCount: result.metadata.evidence_count,
-          nodeCount: result.source_graph.nodes.length,
-          edgeCount: result.source_graph.edges.length,
-          aiEnhanced: true
-        },
-        blockchain: {
-          provider: 'polygon',
-          transactionHash: result.blockchain_hash
-        },
-        verification: {
-          verdict: result.verdict,
-          accuracyScore: result.accuracy_score,
-          confidence: result.metadata?.confidence
-        },
-        request: {
-          source,
-          originalUrl: url,
-          processingTimeMs: Date.now() - startTime
+      // Skip database operations in test mode
+      if (!testMode && !result.metadata?.test_mode) {
+        try {
+          // Save to database
+          const sourceGraph = new SourceGraph({
+            hash: result.source_graph.hash,
+            claim: result.metadata.claim,
+            nodes: result.source_graph.nodes,
+            edges: result.source_graph.edges,
+            clusters: [],
+            metadata: {
+              sourceCount: result.metadata.evidence_count,
+              nodeCount: result.source_graph.nodes.length,
+              edgeCount: result.source_graph.edges.length,
+              aiEnhanced: true
+            },
+            blockchain: {
+              provider: 'polygon',
+              transactionHash: result.blockchain_hash
+            },
+            verification: {
+              verdict: result.verdict,
+              accuracyScore: result.accuracy_score,
+              confidence: result.metadata?.confidence
+            },
+            request: {
+              source,
+              originalUrl: url,
+              processingTimeMs: Date.now() - startTime
+            }
+          });
+
+          await sourceGraph.save();
+
+          // Save agent reports
+          for (const report of result.agent_reports) {
+            const agentReport = new AgentReport({
+              sourceGraphId: sourceGraph._id,
+              agentName: report.agent_name,
+              agentType: this.getAgentType(report.agent_name),
+              credibilityScore: report.credibility_score,
+              confidence: report.confidence || 0.5,
+              verdict: this.normalizeVerdict(report.verdict),
+              summary: report.summary,
+              detailedReasoning: report.reasoning,
+              evidenceLinks: report.evidence_links,
+              agreedWithFinal: report.verdict === result.verdict
+            });
+            await agentReport.save();
+          }
+        } catch (dbError) {
+          logger.warn('Database save failed (non-blocking)', { error: dbError.message });
         }
-      });
-
-      await sourceGraph.save();
-
-      // Save agent reports
-      for (const report of result.agent_reports) {
-        const agentReport = new AgentReport({
-          sourceGraphId: sourceGraph._id,
-          agentName: report.agent_name,
-          agentType: this.getAgentType(report.agent_name),
-          credibilityScore: report.credibility_score,
-          confidence: report.confidence || 0.5,
-          verdict: this.normalizeVerdict(report.verdict),
-          summary: report.summary,
-          detailedReasoning: report.reasoning,
-          evidenceLinks: report.evidence_links,
-          agreedWithFinal: report.verdict === result.verdict
-        });
-        await agentReport.save();
       }
 
       logger.verification('Completed', {
         verdict: result.verdict,
         accuracy: result.accuracy_score,
-        processingTime: Date.now() - startTime
+        processingTime: Date.now() - startTime,
+        testMode: testMode || result.metadata?.test_mode
       });
 
       // Return response in required format
@@ -133,6 +143,15 @@ class VerifyController {
     const { hash } = req.params;
 
     try {
+      // Validate hash format (64 hex characters)
+      if (!/^[a-f0-9]{64}$/i.test(hash)) {
+        return res.status(404).json({
+          error: 'Not Found',
+          message: 'Invalid hash format',
+          timestamp: new Date().toISOString()
+        });
+      }
+
       const sourceGraph = await SourceGraph.findByHash(hash);
 
       if (!sourceGraph) {

@@ -75,13 +75,13 @@ const webhookValidation = [
 
 /**
  * Validate graph hash parameter
+ * Allow any string - controller will validate format and return 404 if invalid
  */
 const graphHashValidation = [
   param('hash')
     .isString()
-    .isLength({ min: 64, max: 64 })
-    .matches(/^[a-f0-9]+$/i)
-    .withMessage('Invalid graph hash format')
+    .isLength({ min: 1 })
+    .withMessage('Hash parameter is required')
 ];
 
 /**

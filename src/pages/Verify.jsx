@@ -7,15 +7,16 @@ import {
   Clock,
   ExternalLink,
   GitBranch,
-  Trash2
+  Loader2,
+  WifiOff,
+  Zap
 } from 'lucide-react'
 import NBCard from '../components/NBCard'
 import NBButton from '../components/NBButton'
 import ChatPanel from '../components/ChatPanel'
 import ClaimInputForm from '../components/ClaimInputForm'
 import VerdictBadge from '../components/VerdictBadge'
-import { verificationService } from '../lib/services/verificationService'
-import { articlesService } from '../lib/services/articlesService'
+import { verificationService, APIError } from '../lib/services/verificationService'
 import { nodesService } from '../lib/services/nodesService'
 import { useUIStore } from '../lib/stores/useUIStore'
 import { cn, timeAgo, truncate } from '../lib/utils'
@@ -27,44 +28,75 @@ export default function Verify() {
   const [currentSession, setCurrentSession] = useState(null)
   const [messages, setMessages] = useState([])
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [streamingMessageIndex, setStreamingMessageIndex] = useState(0)
 
   // Check for articleId in URL and auto-start verification
   useEffect(() => {
     const articleId = searchParams.get('articleId')
-    if (articleId) {
-      const article = articlesService.getById(articleId)
-      if (article) {
-        handleVerify({
-          inputType: 'text',
-          inputValue: article.headline
-        })
-      }
+    const claim = searchParams.get('claim')
+    
+    if (articleId || claim) {
+      handleVerify({
+        inputType: claim ? 'text' : 'url',
+        inputValue: claim || articleId
+      })
     }
   }, [searchParams])
 
   const handleVerify = async (data) => {
     setIsLoading(true)
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    const result = verificationService.startSession({
-      type: data.inputType,
-      value: data.inputValue
-    })
-
-    setCurrentSession(result.session)
+    setError(null)
     setMessages([])
-    
-    // Stream messages with delays for effect
-    for (let i = 0; i < result.messages.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 800))
-      setMessages(prev => [...prev, result.messages[i]])
-    }
+    setStreamingMessageIndex(0)
 
-    setIsLoading(false)
-    addVerification(result.session)
-    toast.success('Verification complete')
+    try {
+      // Call the real backend API
+      const result = await verificationService.startSession({
+        type: data.inputType,
+        value: data.inputValue
+      })
+
+      setCurrentSession(result.session)
+      
+      // Stream messages with delays for effect
+      for (let i = 0; i < result.messages.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 600))
+        setMessages(prev => [...prev, result.messages[i]])
+        setStreamingMessageIndex(i + 1)
+      }
+
+      // Store trail data if we have a source graph
+      if (result.result?.source_graph?.hash) {
+        nodesService.storeTrail(result.result.source_graph.hash, result.result)
+      }
+
+      addVerification(result.session)
+      toast.success('Verification complete!', {
+        description: `Verdict: ${result.session.finalVerdict}`
+      })
+    } catch (err) {
+      console.error('Verification failed:', err)
+      
+      let errorMessage = 'Verification failed. Please try again.'
+      
+      if (err instanceof APIError) {
+        if (err.status === 0) {
+          errorMessage = 'Cannot connect to server. Please ensure the backend is running.'
+        } else if (err.status === 429) {
+          errorMessage = 'Rate limit exceeded. Please wait a moment and try again.'
+        } else {
+          errorMessage = err.message
+        }
+      }
+      
+      setError(errorMessage)
+      toast.error('Verification failed', {
+        description: errorMessage
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleSendFollowUp = async (content) => {
@@ -85,34 +117,28 @@ export default function Verify() {
     if (sessionData) {
       setCurrentSession(sessionData.session)
       setMessages(sessionData.messages)
+      setError(null)
     }
   }
 
   const handleNewSession = () => {
     setCurrentSession(null)
     setMessages([])
+    setError(null)
   }
 
   // Get linked node info if available
-  const linkedNode = useMemo(() => {
-    if (!currentSession?.linkedNewsNodeId) return null
-    return nodesService.getById(currentSession.linkedNewsNodeId)
-  }, [currentSession])
-
-  const linkedArticle = useMemo(() => {
-    if (!linkedNode) return null
-    return articlesService.getById(linkedNode.primaryArticleId)
-  }, [linkedNode])
+  const linkedNodeId = currentSession?.linkedNewsNodeId || currentSession?.sourceGraph?.hash
 
   return (
     <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Demo Banner */}
-        <div className="mb-6 p-4 bg-nb-warn/20 rounded-nb border-2 border-nb-warn flex items-center gap-3">
-          <AlertTriangle className="w-5 h-5 text-nb-warn flex-shrink-0" />
+        {/* Live Banner */}
+        <div className="mb-6 p-4 bg-nb-green/20 rounded-nb border-2 border-nb-green flex items-center gap-3">
+          <Zap className="w-5 h-5 text-nb-green flex-shrink-0" />
           <p className="text-sm">
-            <strong>This is a demo</strong> — no real fact checking is performed. 
-            All verification responses are simulated for demonstration purposes.
+            <strong>Live AI Verification</strong> — Connected to SatyaTrail backend with multi-agent analysis, 
+            Tavily search, and blockchain storage.
           </p>
         </div>
 
@@ -175,7 +201,7 @@ export default function Verify() {
                 <div>
                   <h1 className="font-display text-xl font-bold">Verify</h1>
                   <p className="text-sm text-nb-ink/60">
-                    Chat-style claim verification
+                    AI-powered claim verification
                   </p>
                 </div>
                 {currentSession && (
@@ -186,6 +212,30 @@ export default function Verify() {
                   />
                 )}
               </div>
+
+              {/* Error Banner */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mx-4 mt-4 p-4 bg-nb-red/20 rounded-nb border-2 border-nb-red flex items-center gap-3"
+                >
+                  <WifiOff className="w-5 h-5 text-nb-red flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{error}</p>
+                    <p className="text-xs text-nb-ink/60 mt-1">
+                      Make sure the backend is running on port 3001
+                    </p>
+                  </div>
+                  <NBButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setError(null)}
+                  >
+                    Dismiss
+                  </NBButton>
+                </motion.div>
+              )}
 
               {/* Chat Messages */}
               <ChatPanel messages={messages} isLoading={isLoading} />
@@ -205,11 +255,16 @@ export default function Verify() {
                         showConfidence
                         size="lg"
                       />
+                      {currentSession.blockchainHash && (
+                        <span className="text-xs text-nb-ink/50 font-mono">
+                          🔗 {currentSession.blockchainHash.slice(0, 12)}...
+                        </span>
+                      )}
                     </div>
                     
                     <div className="flex gap-2">
-                      {linkedArticle && (
-                        <Link to={`/article/${linkedArticle.id}/trail`}>
+                      {linkedNodeId && (
+                        <Link to={`/article/${linkedNodeId}/trail`}>
                           <NBButton variant="primary" size="sm" icon={GitBranch}>
                             View Trail
                           </NBButton>
@@ -223,22 +278,16 @@ export default function Verify() {
                     </div>
                   </div>
 
-                  {/* Evidence chips */}
-                  {linkedNode && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <span className="text-xs text-nb-ink/60 mr-2">Sources:</span>
-                      {linkedNode.articleIds.map((artId) => {
-                        const art = articlesService.getById(artId)
-                        return art ? (
-                          <Link
-                            key={artId}
-                            to={`/article/${artId}`}
-                            className="text-xs px-2 py-1 bg-nb-accent-2/20 rounded-full border border-nb-ink/20 hover:bg-nb-accent-2/40 transition-colors"
-                          >
-                            {art.sourceName}
-                          </Link>
-                        ) : null
-                      })}
+                  {/* Source graph info */}
+                  {currentSession.sourceGraph && (
+                    <div className="mt-3 flex flex-wrap gap-2 items-center">
+                      <span className="text-xs text-nb-ink/60">Sources analyzed:</span>
+                      <span className="text-xs px-2 py-1 bg-nb-cyan/20 rounded-full border border-nb-ink/20 font-mono">
+                        {currentSession.sourceGraph.nodes?.length || 0} nodes
+                      </span>
+                      <span className="text-xs px-2 py-1 bg-nb-yellow/20 rounded-full border border-nb-ink/20 font-mono">
+                        {currentSession.sourceGraph.edges?.length || 0} connections
+                      </span>
                     </div>
                   )}
                 </motion.div>
@@ -248,6 +297,7 @@ export default function Verify() {
               <ClaimInputForm
                 defaultText={searchParams.get('claim') || ''}
                 onSubmit={handleVerify}
+                disabled={isLoading}
               />
             </NBCard>
           </div>
@@ -256,4 +306,3 @@ export default function Verify() {
     </div>
   )
 }
-

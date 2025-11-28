@@ -17,11 +17,12 @@ class ExtensionController {
    */
   async verify(req, res) {
     const startTime = Date.now();
-    const { url, text } = req.body;
+    const { url, text, testMode } = req.body;
 
     logger.verification('Extension request received', {
       url,
       hasText: !!text,
+      testMode,
       ip: req.ip
     });
 
@@ -36,37 +37,65 @@ class ExtensionController {
       }
 
       // Use quick verification (single agent)
-      const result = await orchestrator.verifyQuick({
-        url,
-        text,
-        source: 'extension'
-      });
-
-      // Save minimal record to database
-      const sourceGraph = new SourceGraph({
-        hash: result.source_graph?.hash || this.generateQuickHash(url, text),
-        claim: result.metadata?.claim || text?.substring(0, 200) || url,
-        nodes: result.source_graph?.nodes || [],
-        edges: result.source_graph?.edges || [],
-        verification: {
-          verdict: result.verdict,
-          accuracyScore: result.accuracy_score,
-          confidence: result.confidence
-        },
-        request: {
+      let result;
+      try {
+        result = await orchestrator.verifyQuick({
+          url,
+          text,
           source: 'extension',
-          originalUrl: url,
-          processingTimeMs: Date.now() - startTime
-        }
-      });
+          testMode
+        });
+      } catch (verifyError) {
+        logger.error('Orchestrator verifyQuick failed', {
+          error: verifyError.message,
+          stack: verifyError.stack,
+          url
+        });
+        throw verifyError;
+      }
 
-      await sourceGraph.save();
+      // Ensure we have required fields
+      if (!result || !result.verdict) {
+        throw new Error('Invalid verification result from orchestrator');
+      }
 
       const processingTime = Date.now() - startTime;
+      const isTestMode = testMode || result.metadata?.test_mode;
+      let graphHash = result.source_graph?.hash || this.generateQuickHash(url, text);
+
+      // Skip database operations in test mode
+      if (!isTestMode) {
+        const sourceGraph = new SourceGraph({
+          hash: graphHash,
+          claim: result.metadata?.claim || text?.substring(0, 200) || url,
+          nodes: result.source_graph?.nodes || [],
+          edges: result.source_graph?.edges || [],
+          verification: {
+            verdict: result.verdict,
+            accuracyScore: result.accuracy_score || 0.5,
+            confidence: result.confidence || 0.5
+          },
+          request: {
+            source: 'extension',
+            originalUrl: url,
+            processingTimeMs: processingTime
+          }
+        });
+
+        try {
+          await sourceGraph.save();
+        } catch (saveError) {
+          // Log but don't fail - we can still return the result
+          logger.warn('Failed to save extension verification to database', {
+            error: saveError.message
+          });
+        }
+      }
 
       logger.verification('Extension completed', {
         verdict: result.verdict,
-        processingTime
+        processingTime,
+        testMode: isTestMode
       });
 
       // Return compact response for extension
@@ -74,7 +103,7 @@ class ExtensionController {
         verdict: result.verdict,
         accuracy_score: result.accuracy_score,
         summary: result.summary,
-        detail_url: `${process.env.BASE_URL || ''}/api/v1/verify/${sourceGraph.hash}`,
+        detail_url: `${process.env.BASE_URL || ''}/api/v1/verify/${graphHash}`,
         timestamp: new Date().toISOString(),
         processing_time_ms: processingTime
       });

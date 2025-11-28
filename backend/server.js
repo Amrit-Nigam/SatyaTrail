@@ -120,39 +120,83 @@ const connectDatabase = async () => {
   }
 };
 
-// Initialize bots
+// Initialize bots (non-blocking)
 const initializeBots = async () => {
-  try {
-    // Initialize Telegram bot
-    if (process.env.TELEGRAM_BOT_TOKEN) {
-      const telegramBot = require('./telegram/bot');
-      await telegramBot.initialize();
-      logger.info('Telegram bot initialized');
-    }
+  // Initialize bots in parallel with timeout
+  const botPromises = [];
 
-    // Initialize Twitter bot
-    if (process.env.TWITTER_BEARER_TOKEN) {
-      const twitterBot = require('./twitter/bot');
-      await twitterBot.initialize();
-      logger.info('Twitter bot initialized');
-    }
-  } catch (error) {
-    logger.warn('Bot initialization warning:', error.message);
+  // Initialize Telegram bot
+  if (process.env.TELEGRAM_BOT_TOKEN) {
+    botPromises.push(
+      (async () => {
+        try {
+          const telegramBot = require('./telegram/bot');
+          await Promise.race([
+            telegramBot.initialize(),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Telegram bot initialization timeout')), 10000)
+            )
+          ]);
+          logger.info('Telegram bot initialized');
+        } catch (error) {
+          logger.warn('Telegram bot initialization failed:', error.message);
+        }
+      })()
+    );
+  }
+
+  // Initialize Twitter bot
+  if (process.env.TWITTER_BEARER_TOKEN) {
+    botPromises.push(
+      (async () => {
+        try {
+          const twitterBot = require('./twitter/bot');
+          await Promise.race([
+            twitterBot.initialize(),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Twitter bot initialization timeout')), 10000)
+            )
+          ]);
+          logger.info('Twitter bot initialized');
+        } catch (error) {
+          logger.warn('Twitter bot initialization failed:', error.message);
+        }
+      })()
+    );
+  }
+
+  // Wait for all bot initializations (but don't block server start)
+  if (botPromises.length > 0) {
+    await Promise.allSettled(botPromises);
   }
 };
 
 // Start server
 const startServer = async () => {
-  validateEnvironment();
-  
-  await connectDatabase();
-  await initializeBots();
+  try {
+    validateEnvironment();
+    logger.info('Environment validation passed');
+    
+    await connectDatabase();
+    logger.info('Database connection established');
+    
+    // Initialize bots but don't block server start
+    logger.info('Initializing bots...');
+    initializeBots().catch(error => {
+      logger.warn('Bot initialization error (non-blocking):', error.message);
+    });
 
-  app.listen(PORT, () => {
-    logger.info(`SatyaTrail backend server running on port ${PORT}`);
-    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    logger.info(`Health check: http://localhost:${PORT}/health`);
-  });
+    // Start server immediately
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      logger.info(`SatyaTrail backend server running on port ${PORT}`);
+      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`Health check: http://localhost:${PORT}/health`);
+    });
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    throw error;
+  }
 };
 
 // Graceful shutdown

@@ -1,219 +1,242 @@
-import { articlesService } from './articlesService'
+import { apiClient } from '../api/client'
 import { sourcesService } from './sourcesService'
 
-// Deterministic seed data for news nodes
-const newsNodes = [
-  {
-    id: "node_001",
-    canonicalClaim: "Government announced a new national urban transport policy for major Indian metros.",
-    summary: "Multiple outlets report on a new transport policy with official press release references.",
-    primaryArticleId: "art_001",
-    articleIds: ["art_001"],
-    originSourceId: "src_03",
-    originPublishedAt: "2025-11-20T08:30:00.000Z",
-    verdict: "likely_true",
-    confidence: 0.85,
-    agentsSummary: "Official documents and consistent reports from reputable sources."
-  },
-  {
-    id: "node_002",
-    canonicalClaim: "A subway tunnel in City X has collapsed causing major casualties.",
-    summary: "Claim propagated via social media before being denied by authorities and local media.",
-    primaryArticleId: "art_002",
-    articleIds: ["art_002"],
-    originSourceId: "src_04",
-    originPublishedAt: "2025-11-21T17:45:00.000Z",
-    verdict: "likely_false",
-    confidence: 0.9,
-    agentsSummary: "Authorities deny incident; images match older footage from another country."
-  },
-  {
-    id: "node_003",
-    canonicalClaim: "HealthMind Technologies raised $50M in Series B funding for AI healthcare diagnostics.",
-    summary: "Tech and business outlets report on the funding round with consistent details.",
-    primaryArticleId: "art_003",
-    articleIds: ["art_003"],
-    originSourceId: "src_01",
-    originPublishedAt: "2025-11-19T13:00:00.000Z",
-    verdict: "likely_true",
-    confidence: 0.78,
-    agentsSummary: "Multiple credible business sources confirm the funding details."
-  },
-  {
-    id: "node_004",
-    canonicalClaim: "Celebrity-endorsed weight loss pill can cause significant weight loss without diet or exercise.",
-    summary: "Viral promotional content for unverified supplement contradicted by health authorities.",
-    primaryArticleId: "art_004",
-    articleIds: ["art_004"],
-    originSourceId: "src_04",
-    originPublishedAt: "2025-11-22T06:00:00.000Z",
-    verdict: "likely_false",
-    confidence: 0.85,
-    agentsSummary: "No regulatory approval; health experts warn against unverified supplements."
+// Cache for nodes/trails
+let nodesCache = new Map()
+let lastFetchTime = null
+const CACHE_TTL = 60000 // 1 minute
+
+/**
+ * Convert backend source graph node to frontend trail node format
+ */
+const convertGraphNode = (node, index) => {
+  // Determine role based on node properties
+  let role = 'commentary'
+  if (node.isOriginal || node.type === 'claim' || index === 0) {
+    role = 'origin'
+  } else if (node.isFactCheck || node.type === 'factcheck') {
+    role = 'debunker'
+  } else if (node.credibilityScore > 0.7) {
+    role = 'amplifier'
   }
-]
 
-// Trail nodes for each news node
-const trailNodesMap = {
-  "node_001": [
-    { id: "tn_001_1", sourceId: "src_03", articleId: null, role: "origin", time: "2025-11-20T08:30:00.000Z" },
-    { id: "tn_001_2", sourceId: "src_01", articleId: "art_001", role: "amplifier", time: "2025-11-20T09:00:00.000Z" },
-    { id: "tn_001_3", sourceId: "src_02", articleId: null, role: "amplifier", time: "2025-11-20T10:15:00.000Z" },
-    { id: "tn_001_4", sourceId: "src_05", articleId: null, role: "commentary", time: "2025-11-20T14:00:00.000Z" }
-  ],
-  "node_002": [
-    { id: "tn_002_1", sourceId: "src_04", articleId: null, role: "origin", time: "2025-11-21T17:45:00.000Z" },
-    { id: "tn_002_2", sourceId: "src_02", articleId: "art_002", role: "amplifier", time: "2025-11-21T18:30:00.000Z" },
-    { id: "tn_002_3", sourceId: "src_03", articleId: null, role: "debunker", time: "2025-11-21T19:00:00.000Z" },
-    { id: "tn_002_4", sourceId: "src_05", articleId: null, role: "debunker", time: "2025-11-21T20:30:00.000Z" },
-    { id: "tn_002_5", sourceId: "src_01", articleId: null, role: "commentary", time: "2025-11-21T21:00:00.000Z" }
-  ],
-  "node_003": [
-    { id: "tn_003_1", sourceId: "src_01", articleId: "art_003", role: "origin", time: "2025-11-19T13:00:00.000Z" },
-    { id: "tn_003_2", sourceId: "src_02", articleId: null, role: "amplifier", time: "2025-11-19T15:00:00.000Z" },
-    { id: "tn_003_3", sourceId: "src_03", articleId: null, role: "commentary", time: "2025-11-19T18:00:00.000Z" }
-  ],
-  "node_004": [
-    { id: "tn_004_1", sourceId: "src_04", articleId: "art_004", role: "origin", time: "2025-11-22T06:00:00.000Z" },
-    { id: "tn_004_2", sourceId: "src_02", articleId: null, role: "amplifier", time: "2025-11-22T07:00:00.000Z" },
-    { id: "tn_004_3", sourceId: "src_03", articleId: null, role: "debunker", time: "2025-11-22T09:00:00.000Z" },
-    { id: "tn_004_4", sourceId: "src_05", articleId: null, role: "debunker", time: "2025-11-22T10:00:00.000Z" }
-  ]
-}
-
-// Trail edges for each news node
-const trailEdgesMap = {
-  "node_001": [
-    { id: "te_001_1", fromNodeId: "tn_001_1", toNodeId: "tn_001_2", reason: "Official press release referenced" },
-    { id: "te_001_2", fromNodeId: "tn_001_2", toNodeId: "tn_001_3", reason: "Story syndicated" },
-    { id: "te_001_3", fromNodeId: "tn_001_2", toNodeId: "tn_001_4", reason: "Analysis published" }
-  ],
-  "node_002": [
-    { id: "te_002_1", fromNodeId: "tn_002_1", toNodeId: "tn_002_2", reason: "Viral content reported" },
-    { id: "te_002_2", fromNodeId: "tn_002_2", toNodeId: "tn_002_3", reason: "Official denial issued" },
-    { id: "te_002_3", fromNodeId: "tn_002_3", toNodeId: "tn_002_4", reason: "Fact-check published" },
-    { id: "te_002_4", fromNodeId: "tn_002_4", toNodeId: "tn_002_5", reason: "Summary coverage" }
-  ],
-  "node_003": [
-    { id: "te_003_1", fromNodeId: "tn_003_1", toNodeId: "tn_003_2", reason: "Tech news picked up" },
-    { id: "te_003_2", fromNodeId: "tn_003_1", toNodeId: "tn_003_3", reason: "Official acknowledgment" }
-  ],
-  "node_004": [
-    { id: "te_004_1", fromNodeId: "tn_004_1", toNodeId: "tn_004_2", reason: "Viral spread" },
-    { id: "te_004_2", fromNodeId: "tn_004_2", toNodeId: "tn_004_3", reason: "Health warning issued" },
-    { id: "te_004_3", fromNodeId: "tn_004_3", toNodeId: "tn_004_4", reason: "Detailed fact-check" }
-  ]
+  return {
+    id: node.id || `node_${index}`,
+    sourceId: node.sourceId || node.domain || `source_${index}`,
+    articleId: node.url || null,
+    role,
+    time: node.publishDate || node.timestamp || new Date().toISOString(),
+    headline: node.title || node.snippet?.substring(0, 100),
+    url: node.url,
+    source: {
+      id: node.sourceId || node.domain || `source_${index}`,
+      name: node.domain || node.sourceName || extractDomain(node.url) || 'Unknown Source',
+      type: node.type || 'news',
+      reputation: node.domainReputationScore || node.credibilityScore || 0.5
+    },
+    credibilityScore: node.credibilityScore || node.domainReputationScore || 0.5
+  }
 }
 
 /**
- * List all news nodes with optional filtering
+ * Convert backend source graph edge to frontend trail edge format
+ */
+const convertGraphEdge = (edge, index) => {
+  return {
+    id: edge.id || `edge_${index}`,
+    fromNodeId: edge.source || edge.from,
+    toNodeId: edge.target || edge.to,
+    relationType: edge.type || edge.relationType || 'related',
+    reason: edge.label || edge.reason || 'Related content'
+  }
+}
+
+/**
+ * Extract domain from URL
+ */
+const extractDomain = (url) => {
+  if (!url) return null
+  try {
+    const domain = new URL(url).hostname
+    return domain.replace('www.', '')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Map backend verdict to frontend verdict
+ */
+const mapVerdict = (verdict) => {
+  const map = {
+    'true': 'likely_true',
+    'false': 'likely_false',
+    'mixed': 'mixed',
+    'unknown': 'unclear'
+  }
+  return map[verdict?.toLowerCase()] || 'unclear'
+}
+
+/**
+ * Get trail data from a verification result
+ * @param {string} hash - Graph hash
+ * @returns {Promise<Object|null>}
+ */
+const getTrailByHash = async (hash) => {
+  // Check cache
+  if (nodesCache.has(hash)) {
+    return nodesCache.get(hash)
+  }
+
+  try {
+    const verification = await apiClient.getVerification(hash)
+    if (!verification) return null
+
+    const trail = convertVerificationToTrail(verification, hash)
+    nodesCache.set(hash, trail)
+    return trail
+  } catch (error) {
+    console.error('Failed to fetch trail:', error)
+    return null
+  }
+}
+
+/**
+ * Convert verification result to trail format
+ */
+const convertVerificationToTrail = (verification, hash) => {
+  const sourceGraph = verification.source_graph || {}
+  
+  // Convert nodes
+  const trailNodes = (sourceGraph.nodes || []).map(convertGraphNode)
+  
+  // Convert edges
+  const trailEdges = (sourceGraph.edges || []).map(convertGraphEdge)
+
+  // Create the news node
+  const newsNode = {
+    id: hash || sourceGraph.hash || `node_${Date.now()}`,
+    canonicalClaim: verification.metadata?.claim || 'Untitled Claim',
+    summary: verification.agent_reports?.[0]?.summary || 'Verification completed',
+    primaryArticleId: verification.metadata?.url || null,
+    articleIds: trailNodes.filter(n => n.url).map(n => n.url),
+    originSourceId: trailNodes[0]?.sourceId || 'unknown',
+    originPublishedAt: verification.timestamp || new Date().toISOString(),
+    verdict: mapVerdict(verification.verdict),
+    confidence: verification.accuracy_score || 0.5,
+    agentsSummary: verification.agent_reports?.map(r => r.summary).join(' ') || '',
+    blockchainHash: verification.blockchain_hash
+  }
+
+  return {
+    node: newsNode,
+    trailNodes,
+    trailEdges,
+    agentReports: verification.agent_reports || [],
+    metadata: verification.metadata
+  }
+}
+
+/**
+ * List all news nodes from recent verifications
  * @param {Object} query - Filter parameters
- * @param {string} [query.verdict] - Filter by verdict
- * @param {string} [query.category] - Filter by category (matches articles)
- * @returns {Array} - Array of news nodes
+ * @returns {Promise<Array>}
  */
-const listNodes = (query = {}) => {
-  let filtered = [...newsNodes]
+const listNodes = async (query = {}) => {
+  try {
+    const data = await apiClient.getRecentVerifications(50)
+    let nodes = (data.verifications || []).map((v, i) => ({
+      id: v.hash,
+      canonicalClaim: v.claim,
+      verdict: mapVerdict(v.verdict),
+      confidence: v.accuracyScore || 0.5,
+      originPublishedAt: v.timestamp,
+      summary: v.claim
+    }))
 
-  // Apply verdict filter
-  if (query.verdict && query.verdict !== 'all') {
-    filtered = filtered.filter(n => n.verdict === query.verdict)
+    // Apply verdict filter
+    if (query.verdict && query.verdict !== 'all') {
+      nodes = nodes.filter(n => n.verdict === query.verdict)
+    }
+
+    // Sort by date
+    nodes.sort((a, b) => new Date(b.originPublishedAt) - new Date(a.originPublishedAt))
+
+    return nodes
+  } catch (error) {
+    console.error('Failed to list nodes:', error)
+    return []
   }
-
-  // Sort by origin date (most recent first)
-  filtered.sort((a, b) => new Date(b.originPublishedAt) - new Date(a.originPublishedAt))
-
-  return filtered
 }
 
 /**
- * Get a single news node by ID
- * @param {string} id - News node ID
- * @returns {Object|null} - News node or null if not found
+ * Get a single news node by ID (hash)
+ * @param {string} id - News node ID (graph hash)
+ * @returns {Promise<Object|null>}
  */
-const getById = (id) => {
-  return newsNodes.find(n => n.id === id) || null
+const getById = async (id) => {
+  const trail = await getTrailByHash(id)
+  return trail?.node || null
 }
 
 /**
  * Get news node by article ID
- * @param {string} articleId - Article ID
- * @returns {Object|null} - News node or null if not found
+ * @param {string} articleId - Article ID (URL or hash)
+ * @returns {Promise<Object|null>}
  */
-const getByArticleId = (articleId) => {
-  return newsNodes.find(n => n.articleIds.includes(articleId)) || null
+const getByArticleId = async (articleId) => {
+  // For now, articleId is the hash
+  return getById(articleId)
 }
 
 /**
  * Get the full trail for a news node
- * @param {string} nodeId - News node ID
- * @returns {Object|null} - Trail data or null if not found
+ * @param {string} nodeId - News node ID (hash)
+ * @returns {Promise<Object|null>}
  */
-const getTrail = (nodeId) => {
-  const node = getById(nodeId)
-  if (!node) return null
-
-  const trailNodes = (trailNodesMap[nodeId] || []).map(tn => {
-    const source = sourcesService.getById(tn.sourceId)
-    const article = tn.articleId ? articlesService.getById(tn.articleId) : null
-    return {
-      ...tn,
-      source,
-      article
-    }
-  })
-
-  const trailEdges = trailEdgesMap[nodeId] || []
-
-  return {
-    node,
-    trailNodes,
-    trailEdges
-  }
+const getTrail = async (nodeId) => {
+  return getTrailByHash(nodeId)
 }
 
 /**
  * Get trail by article ID
  * @param {string} articleId - Article ID
- * @returns {Object|null} - Trail data or null if not found
+ * @returns {Promise<Object|null>}
  */
-const getTrailByArticleId = (articleId) => {
-  const article = articlesService.getById(articleId)
-  if (!article || !article.newsNodeId) {
-    // Create a minimal trail for articles without a news node
-    if (article) {
-      const source = sourcesService.getById(article.sourceId)
-      return {
-        node: {
-          id: `temp_${articleId}`,
-          canonicalClaim: article.headline,
-          summary: article.subheadline,
-          primaryArticleId: articleId,
-          articleIds: [articleId],
-          originSourceId: article.sourceId,
-          originPublishedAt: article.publishedAt,
-          verdict: article.verdict,
-          confidence: article.confidence,
-          agentsSummary: "No trail analysis available for this article."
-        },
-        trailNodes: [
-          {
-            id: `tn_temp_1`,
-            sourceId: article.sourceId,
-            articleId: articleId,
-            role: "origin",
-            time: article.publishedAt,
-            source,
-            article
-          }
-        ],
-        trailEdges: []
-      }
-    }
-    return null
-  }
+const getTrailByArticleId = async (articleId) => {
+  return getTrailByHash(articleId)
+}
 
-  return getTrail(article.newsNodeId)
+/**
+ * Store a trail from a new verification result
+ * @param {string} hash - Graph hash
+ * @param {Object} verification - Verification result
+ */
+const storeTrail = (hash, verification) => {
+  const trail = convertVerificationToTrail(verification, hash)
+  nodesCache.set(hash, trail)
+  return trail
+}
+
+/**
+ * Clear the cache
+ */
+const clearCache = () => {
+  nodesCache.clear()
+  lastFetchTime = null
+}
+
+// Legacy sync methods for backward compatibility (use cached data)
+const listNodesSync = (query = {}) => {
+  const nodes = Array.from(nodesCache.values()).map(t => t.node)
+  if (query.verdict && query.verdict !== 'all') {
+    return nodes.filter(n => n.verdict === query.verdict)
+  }
+  return nodes
+}
+
+const getByIdSync = (id) => {
+  return nodesCache.get(id)?.node || null
 }
 
 export const nodesService = {
@@ -222,6 +245,14 @@ export const nodesService = {
   getByArticleId,
   getTrail,
   getTrailByArticleId,
-  newsNodes
+  getTrailByHash,
+  storeTrail,
+  clearCache,
+  // Legacy sync methods
+  listNodesSync,
+  getByIdSync,
+  // For backward compat
+  get newsNodes() {
+    return Array.from(nodesCache.values()).map(t => t.node)
+  }
 }
-

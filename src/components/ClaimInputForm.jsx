@@ -14,7 +14,7 @@ const schema = z.object({
 /**
  * Form at bottom of /verify page
  */
-export default function ClaimInputForm({ defaultText = '', defaultUrl = '', onSubmit }) {
+export default function ClaimInputForm({ defaultText = '', defaultUrl = '', onSubmit, disabled = false }) {
   const {
     register,
     handleSubmit,
@@ -124,12 +124,12 @@ export default function ClaimInputForm({ defaultText = '', defaultUrl = '', onSu
         <NBButton
           type="submit"
           variant="primary"
-          disabled={isSubmitting}
+          disabled={isSubmitting || disabled}
           className="self-end"
           data-testid="chat-send"
         >
           <Send className="w-5 h-5" />
-          Check
+          {disabled ? 'Verifying...' : 'Check'}
         </NBButton>
       </div>
 
