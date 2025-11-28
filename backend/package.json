@@ -9,7 +9,10 @@
     "test": "jest --coverage",
     "test:routes": "node scripts/test-routes.js",
     "lint": "eslint .",
-    "store-graph": "node scripts/storeGraphOnChain.js"
+    "store-graph": "node scripts/storeGraphOnChain.js",
+    "seed": "node scripts/seed-data.js",
+    "seed:clear": "node scripts/seed-data.js --clear",
+    "seed:count": "node scripts/seed-data.js --count=50"
   },
   "dependencies": {
     "@solana/web3.js": "^1.89.1",
