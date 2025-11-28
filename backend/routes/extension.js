@@ -183,7 +183,7 @@ router.post('/analyze', extensionLimiter, async (req, res) => {
           }
         ],
         temperature: 0.3,
-        max_tokens: 2500,
+        max_completion_tokens: 2500,
         response_format: { type: 'json_object' }
       });
 
@@ -304,7 +304,7 @@ router.post('/analyze', extensionLimiter, async (req, res) => {
           }
         ],
         temperature: 0.2,
-        max_tokens: 3000,
+        max_completion_tokens: 3000,
         response_format: { type: 'json_object' }
       });
 
@@ -426,7 +426,7 @@ router.post('/quick', extensionLimiter, async (req, res) => {
         { role: 'user', content: text.substring(0, 2000) }
       ],
       temperature: 0.3,
-      max_tokens: 500,
+      max_completion_tokens: 500,
       response_format: { type: 'json_object' }
     });
 

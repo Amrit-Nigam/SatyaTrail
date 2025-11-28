@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate SatyaTrail Icons</title>
+  <style>
+    body { font-family: system-ui; padding: 40px; background: #1a1a1a; color: white; }
+    .icon-container { display: flex; gap: 20px; flex-wrap: wrap; margin: 20px 0; }
+    canvas { border: 1px solid #333; border-radius: 8px; }
+    button { padding: 12px 24px; background: #6366f1; color: white; border: none; border-radius: 8px; cursor: pointer; margin: 10px 5px; }
+    button:hover { background: #818cf8; }
+    .instructions { background: #252525; padding: 20px; border-radius: 8px; margin-top: 20px; }
+    code { background: #333; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>🛡️ SatyaTrail Icon Generator</h1>
+  <p>Click the buttons below to download icons for the Chrome extension.</p>
+  
+  <div class="icon-container">
+    <div>
+      <canvas id="icon16" width="16" height="16"></canvas>
+      <p>16x16</p>
+    </div>
+    <div>
+      <canvas id="icon32" width="32" height="32"></canvas>
+      <p>32x32</p>
+    </div>
+    <div>
+      <canvas id="icon48" width="48" height="48"></canvas>
+      <p>48x48</p>
+    </div>
+    <div>
+      <canvas id="icon128" width="128" height="128"></canvas>
+      <p>128x128</p>
+    </div>
+  </div>
+  
+  <button onclick="downloadAll()">⬇️ Download All Icons</button>
+  
+  <div class="instructions">
+    <h3>Instructions</h3>
+    <ol>
+      <li>Click "Download All Icons" button</li>
+      <li>Move the downloaded PNG files to the <code>extension/icons/</code> folder</li>
+      <li>Load the extension in Chrome</li>
+    </ol>
+  </div>
+  
+  <script>
+    const sizes = [16, 32, 48, 128];
+    
+    function drawIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      const centerX = size / 2;
+      const centerY = size / 2;
+      const radius = size * 0.4;
+      
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#6366f1');
+      gradient.addColorStop(1, '#818cf8');
+      
+      // Draw rounded rectangle background
+      ctx.beginPath();
+      const cornerRadius = size * 0.15;
+      ctx.roundRect(0, 0, size, size, cornerRadius);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+      
+      // Draw shield
+      ctx.beginPath();
+      ctx.strokeStyle = 'white';
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = size * 0.06;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      // Shield path
+      const shieldWidth = size * 0.5;
+      const shieldHeight = size * 0.55;
+      const startX = centerX - shieldWidth/2;
+      const startY = centerY - shieldHeight/2 + size * 0.05;
+      
+      ctx.moveTo(centerX, startY);
+      ctx.lineTo(centerX + shieldWidth/2, startY + shieldHeight * 0.15);
+      ctx.lineTo(centerX + shieldWidth/2, startY + shieldHeight * 0.5);
+      ctx.quadraticCurveTo(centerX + shieldWidth/2, startY + shieldHeight, centerX, startY + shieldHeight);
+      ctx.quadraticCurveTo(centerX - shieldWidth/2, startY + shieldHeight, centerX - shieldWidth/2, startY + shieldHeight * 0.5);
+      ctx.lineTo(centerX - shieldWidth/2, startY + shieldHeight * 0.15);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      
+      // Draw checkmark
+      ctx.beginPath();
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = size * 0.08;
+      const checkStartX = centerX - size * 0.12;
+      const checkStartY = centerY + size * 0.05;
+      ctx.moveTo(checkStartX, checkStartY);
+      ctx.lineTo(centerX - size * 0.02, checkStartY + size * 0.12);
+      ctx.lineTo(centerX + size * 0.15, checkStartY - size * 0.1);
+      ctx.stroke();
+    }
+    
+    // Draw all icons
+    sizes.forEach(size => {
+      const canvas = document.getElementById(`icon${size}`);
+      drawIcon(canvas, size);
+    });
+    
+    function downloadIcon(size) {
+      const canvas = document.getElementById(`icon${size}`);
+      const link = document.createElement('a');
+      link.download = `icon${size}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+    
+    function downloadAll() {
+      sizes.forEach((size, index) => {
+        setTimeout(() => downloadIcon(size), index * 300);
+      });
+    }
+  </script>
+</body>
+</html>
+

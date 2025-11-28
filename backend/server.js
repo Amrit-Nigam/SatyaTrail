@@ -38,13 +38,8 @@ const validateEnvironment = () => {
     process.exit(1);
   }
 
-  // Strict GPT-5 requirement check
-  const modelName = process.env.MODEL_NAME;
-  if (!modelName) {
-    logger.error('MODEL_NAME environment variable is required. This backend requires GPT-5 (highest tier). No fallback allowed.');
-    process.exit(1);
-  }
-
+  // Model name check (defaults to gpt-4o if not specified)
+  const modelName = process.env.MODEL_NAME || 'gpt-4o';
   logger.info(`Using AI model: ${modelName}`);
 };
 
