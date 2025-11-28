@@ -1,0 +1,585 @@
+{
+    "meta": {
+      "spec_version": "1.0.0",
+      "title": "SatyaTrail — News Authenticity & Trail Explorer (Frontend Only)",
+      "author": "Cursor Prompt (adapted)",
+      "description": "Build a production-quality, frontend-only news platform UI for exploring news articles as tiles, drilling into detailed views, visualizing node-based origin trails, and verifying claims via an agentic ChatGPT-style interface. Use TailwindCSS in a Neo-Brutalist style. No backend, AI, or blockchain logic yet — wire up clean mock services and deterministic demo data so the app runs end-to-end with realistic UX.",
+      "framework": {
+        "name": "React.js",
+        "app_router": true,
+        "typescript": true,
+        "react_server_components": true
+      }
+    },
+    "tech_stack": {
+      "styling": "TailwindCSS (Neo-Brutalism)",
+      "ui_kit": ["shadcn/ui (for primitives)", "lucide-react (icons)"],
+      "state": "Zustand for global stores + URL search params for filters",
+      "forms": "react-hook-form + zod",
+      "routing": "React.js app router",
+      "mock_api": "Local in-memory services + optional MSW handlers (no network calls required)",
+      "notifications": "sonner",
+      "images": "next/image or react/image with local placeholder assets"
+    },
+    "design_language": {
+      "theme_name": "Neo-Brutalism",
+      "tailwind_overrides": {
+        "theme": {
+          "extend": {
+            "colors": {
+              "nb-bg": "#F7F5F2",
+              "nb-ink": "#111111",
+              "nb-accent": "#6EE7B7",
+              "nb-accent-2": "#60A5FA",
+              "nb-warn": "#F59E0B",
+              "nb-error": "#EF4444",
+              "nb-ok": "#10B981",
+              "nb-card": "#FFFFFF"
+            },
+            "boxShadow": {
+              "nb": "8px 8px 0 0 rgba(0,0,0,0.9)",
+              "nb-sm": "4px 4px 0 0 rgba(0,0,0,0.9)",
+              "nb-inset": "inset 0 0 0 3px #111"
+            },
+            "borderRadius": {
+              "nb": "1.25rem"
+            },
+            "fontFamily": {
+              "display": ["Space Grotesk", "system-ui", "sans-serif"],
+              "body": ["Inter", "system-ui", "sans-serif"]
+            }
+          }
+        }
+      },
+      "neo_brutalism_rules": [
+        "Thick 2-3px borders (#111) on cards and interactive elements.",
+        "High-contrast solid backgrounds, minimal gradients.",
+        "Offset drop shadows (shadow-nb) to create sticker effect.",
+        "Large punchy headings (font-display), compact body (font-body).",
+        "Rounded corners (rounded-nb) and generous padding.",
+        "Micro-interactions: hover:-translate-y-0.5, active:translate-y-0, focus-visible:ring-4."
+      ]
+    },
+    "app_structure": {
+      "root_layout": {
+        "header": [
+          "Logo (SatyaTrail wordmark)",
+          "Global Nav: Feed, Graph Explorer, Verify, About",
+          "Search bar (global quick-search)",
+          "Profile/avatar placeholder",
+          "Theme toggle (optional)"
+        ],
+        "footer": [
+          "Copyright SatyaTrail (demo)",
+          "Links: About, Methodology, Mock Docs",
+          "Version badge"
+        ]
+      },
+      "routes": [
+        {
+          "path": "/",
+          "title": "Landing — SatyaTrail",
+          "purpose": "Introduce the platform and show a tile-based news showcase like a modern news site.",
+          "sections": [
+            "Hero with bold tagline, short explanation, and CTA buttons to Feed and Verify",
+            "Trending News Grid: tile-like cards for top stories, with category chips and quick verdict badges (mock)",
+            "How SatyaTrail Works (3–4 steps): Ingest → Build Trail Graph → Multi-Agent Check → Veracity Badge",
+            "Feature Highlights Grid: Node-based origin map, source reputation, Chat-style claim checker, transparency",
+            "Small 'Live Examples' strip with 3 sample stories and their mock verdicts",
+            "FAQ accordion (What is a trail? How is veracity decided? Is this real-time? — explanation but all mock)"
+          ]
+        },
+        {
+          "path": "/feed",
+          "title": "News Feed",
+          "purpose": "Display all news items in a tile/grid layout with filters and sorting.",
+          "elements": [
+            "Filter bar: category, date range, veracity status (All, Likely True, Likely False, Mixed, Unclear), source",
+            "Search input for keywords / entities",
+            "Toggle between grid (tiles) and list view",
+            "Tiles show: headline, source, time, category, short snippet, verdict pill, 'View Trail' inline link",
+            "Pagination or infinite scroll mock",
+            "Empty state when filters return nothing"
+          ]
+        },
+        {
+          "path": "/article/[id]",
+          "title": "Article Detail",
+          "purpose": "Show the full article page like a news site and connect it to trail and verification actions.",
+          "elements": [
+            "Breadcrumb: Home → Feed → Category → Article Title",
+            "Headline, subheadline, source, author, timestamp, category, share icons (mock)",
+            "Veracity badge at top (e.g., Likely True, Likely False, Mixed, Unclear) with tooltip explaining mock reasoning",
+            "Body content: multiple paragraphs of mock text with inline quote styles and images",
+            "Right sidebar (on desktop) or bottom section (mobile) with:",
+            "  - 'Trail Snapshot' card: origin source, number of hops, number of sources, quick mini timeline",
+            "  - 'Source reputation' mini panel for this outlet",
+            "Buttons:",
+            "  - 'View Full Trail Graph' (routes to /article/[id]/trail)",
+            "  - 'Open in Verify' (routes to /verify?articleId=[id] and preloads claim)",
+            "Related articles strip at bottom"
+          ]
+        },
+        {
+          "path": "/article/[id]/trail",
+          "title": "Trail Graph — Article",
+          "purpose": "Visualize the node-based source graph (origin, hops, and relationships).",
+          "elements": [
+            "Header with article title, source, and back button to article",
+            "Summary strip: origin source, time of first report, number of outlets, last update time (mock)",
+            "Node-based graph canvas (static-ish, with simple pan/zoom) showing nodes as sources and edges as propagation; color-coded by role (origin, amplifier, debunker)",
+            "Sidebar panel with:",
+            "  - List of nodes with details: source name, role, mock reputation, timestamp, verdict contribution",
+            "  - Filters: show only origin + first N hops, hide low-impact nodes, highlight debunkers",
+            "Timeline strip under graph: simple horizontal timeline with key events as pills (click highlights node)",
+            "Button 'Send this trail to Verify' which routes to /verify with pre-selected node/claim"
+          ]
+        },
+        {
+          "path": "/explore/graph",
+          "title": "Global Graph Explorer",
+          "purpose": "Browse multiple news nodes as a larger network or via a list with filters.",
+          "elements": [
+            "Filter bar: date, topic, category, region, veracity status",
+            "Two tabs: 'List' (table of NewsNodes) and 'Network' (overview graph)",
+            "List view: table showing claim summary, dominant headline, number of sources, origin outlet, verdict, 'Open Trail' button",
+            "Network view: simplified graph of clusters (NewsNodes as big bubbles; sources aggregated inside), with tooltip summaries",
+            "Clicking a node routes to /article/[id]/trail or a dedicated /trail/[nodeId] route (frontend-only mapping)"
+          ]
+        },
+        {
+          "path": "/verify",
+          "title": "Verify — Chat-Style Claim Checker",
+          "purpose": "Provide a ChatGPT-like UI where users can paste news text or links and see mock agentic verification with trail references.",
+          "elements": [
+            "Two-column layout (desktop): left sidebar for recent verifications; main chat pane on the right",
+            "Input options:",
+            "  - Textarea to paste article text or claim",
+            "  - Input for URL",
+            "  - Optional dropdown 'Use example claim' for demo",
+            "Primary CTA: 'Check this news' (data-testid=cta-verify)",
+            "Chat transcript area with messages from 'You', 'Trail Orchestrator', 'Source Agents', 'Factbase Agent' etc., all mocked",
+            "For final answer, show:",
+            "  - Verdict card with label and confidence bar",
+            "  - Links to related NewsNodes (e.g., 'View Trail' buttons going to /article/[id]/trail or /explore/graph)",
+            "  - Mini evidence list with source chips",
+            "Right/top info strip: 'This is a demo — no real fact checking is performed.'"
+          ]
+        },
+        {
+          "path": "/about",
+          "title": "About & Methodology",
+          "purpose": "Explain the (mocked) pipeline and how the UI is meant to be used.",
+          "elements": [
+            "Sections on: Problem, Approach (trail graph + multi-agent verification), What the badges mean",
+            "Visual explainer cards for Ingestion, Clustering, Agent Reasoning, Reputation, and Trail Anchoring (copy only, no real chain)",
+            "FAQ repeated in more detail",
+            "Link back to Verify and Explore"
+          ]
+        }
+      ]
+    },
+    "components": [
+      {
+        "name": "NBCard",
+        "purpose": "Neo-Brutalist card wrapper for panels, tiles, and sections",
+        "props": ["as", "className"],
+        "styles": "bg-nb-card border-2 border-nb-ink shadow-nb rounded-nb p-5"
+      },
+      {
+        "name": "NBButton",
+        "purpose": "Primary/secondary/ghost button",
+        "props": ["variant", "icon", "onClick", "disabled", "className"],
+        "variants": [
+          "primary (nb-ink on nb-accent)",
+          "secondary (nb-ink on nb-accent-2)",
+          "ghost (transparent with border)"
+        ],
+        "styles": "inline-flex items-center justify-center border-2 border-nb-ink shadow-nb rounded-nb px-4 py-2 font-medium hover:-translate-y-0.5 active:translate-y-0 transition-transform focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-nb-ink/30"
+      },
+      {
+        "name": "VerdictBadge",
+        "purpose": "Show veracity verdict as colored pill",
+        "props": ["verdict", "confidence"],
+        "details": "Maps verdict to color: Likely True → nb-ok, Likely False → nb-error, Mixed → nb-warn, Unclear → neutral. Optional confidence bar tooltip."
+      },
+      {
+        "name": "NewsTile",
+        "purpose": "Tile-like card for landing and feed pages",
+        "props": [
+          "id",
+          "headline",
+          "sourceName",
+          "publishedAt",
+          "category",
+          "snippet",
+          "verdict",
+          "onClick"
+        ],
+        "styles": "cursor-pointer flex flex-col gap-3 h-full hover:-translate-y-0.5 transition-transform"
+      },
+      {
+        "name": "FeedFilterBar",
+        "purpose": "Filter bar for /feed and /explore",
+        "props": ["query", "onChange"],
+        "details": "Syncs with URLSearchParams; includes select inputs, chips, search box."
+      },
+      {
+        "name": "TrailGraph",
+        "purpose": "Render node-based source graph for a NewsNode",
+        "props": ["nodes", "edges", "selectedNodeId", "onSelectNode"],
+        "details": "Static mock positions with small interactivity (highlighting, labels)."
+      },
+      {
+        "name": "TimelineStrip",
+        "purpose": "Show chronological events related to a NewsNode",
+        "props": ["events", "onSelect"],
+        "details": "Horizontal scroll with pills; clicking aligns with graph."
+      },
+      {
+        "name": "SourceReputationBadge",
+        "purpose": "Display mock reputation score for a source",
+        "props": ["score", "label"],
+        "details": "Uses color scale and short caption."
+      },
+      {
+        "name": "ChatPanel",
+        "purpose": "ChatGPT-like conversation UI for /verify",
+        "props": ["messages", "onSend"],
+        "details": "Bubbles for user vs agents, streaming illusion with skeletons (mock), scrollable area."
+      },
+      {
+        "name": "ClaimInputForm",
+        "purpose": "Form at bottom of /verify page",
+        "props": ["defaultText", "defaultUrl", "onSubmit"],
+        "details": "react-hook-form + zod; supports text or URL."
+      },
+      {
+        "name": "TrailSummaryCard",
+        "purpose": "Small summary of a NewsNode trail",
+        "props": ["originSource", "hops", "sourcesCount", "firstSeenAt", "lastUpdatedAt"],
+        "details": "Used in article detail sidebar, verify results, and explorer."
+      },
+      {
+        "name": "LayoutShell",
+        "purpose": "Shared shell with header, nav, and footer",
+        "props": ["children"],
+        "details": "Applies background, max-width container, and padding."
+      }
+    ],
+    "types": {
+      "Article": {
+        "id": "string",
+        "headline": "string",
+        "subheadline": "string",
+        "sourceId": "string",
+        "sourceName": "string",
+        "author": "string",
+        "publishedAt": "string (ISO)",
+        "category": "string",
+        "body": "string",
+        "imageUrl": "string",
+        "newsNodeId": "string | null",
+        "verdict": "\"likely_true\" | \"likely_false\" | \"mixed\" | \"unclear\" | \"unchecked\"",
+        "confidence": "number (0–1)"
+      },
+      "NewsNode": {
+        "id": "string",
+        "canonicalClaim": "string",
+        "summary": "string",
+        "primaryArticleId": "string",
+        "articleIds": "string[]",
+        "originSourceId": "string",
+        "originPublishedAt": "string (ISO)",
+        "verdict": "\"likely_true\" | \"likely_false\" | \"mixed\" | \"unclear\" | \"unchecked\"",
+        "confidence": "number (0–1)",
+        "agentsSummary": "string"
+      },
+      "Source": {
+        "id": "string",
+        "name": "string",
+        "domain": "string",
+        "reputationScore": "number (0–100)",
+        "type": "\"news\" | \"fact_checker\" | \"social\" | \"official\""
+      },
+      "TrailNode": {
+        "id": "string",
+        "sourceId": "string",
+        "articleId": "string | null",
+        "role": "\"origin\" | \"amplifier\" | \"debunker\" | \"commentary\"",
+        "time": "string (ISO)"
+      },
+      "TrailEdge": {
+        "id": "string",
+        "fromNodeId": "string",
+        "toNodeId": "string",
+        "reason": "string"
+      },
+      "VerificationSession": {
+        "id": "string",
+        "createdAt": "string (ISO)",
+        "inputType": "\"url\" | \"text\" | \"demo\"",
+        "inputValue": "string",
+        "linkedNewsNodeId": "string | null",
+        "finalVerdict": "Article['verdict'] | null",
+        "finalConfidence": "number | null"
+      },
+      "ChatMessage": {
+        "id": "string",
+        "sessionId": "string",
+        "sender": "\"user\" | \"orchestrator\" | \"source_agent\" | \"factbase_agent\" | \"system\"",
+        "content": "string",
+        "createdAt": "string (ISO)"
+      }
+    },
+    "mock_services": {
+      "seed_strategy": "Deterministic faker seeded with 'satyatrail' to generate 20 articles across 5 sources and 4 NewsNodes.",
+      "modules": [
+        {
+          "name": "articlesService",
+          "functions": [
+            "listAll(query): Article[] (filter + paginate via URL params: category, verdict, sourceId, q)",
+            "getById(id): Article",
+            "listTrending(): Article[] (used on landing page)"
+          ]
+        },
+        {
+          "name": "nodesService",
+          "functions": [
+            "listNodes(query): NewsNode[] (filters: date, category, verdict)",
+            "getById(id): NewsNode",
+            "getTrail(id): { node: NewsNode; trailNodes: TrailNode[]; trailEdges: TrailEdge[] }"
+          ]
+        },
+        {
+          "name": "sourcesService",
+          "functions": [
+            "listAll(): Source[]",
+            "getById(id): Source",
+            "getReputation(id): number"
+          ]
+        },
+        {
+          "name": "verificationService",
+          "functions": [
+            "startSession(input): VerificationSession (creates demo session with deterministic messages and optional linked NewsNode)",
+            "getSession(id): { session: VerificationSession; messages: ChatMessage[] }",
+            "sendMessage(sessionId, content): { session: VerificationSession; messages: ChatMessage[] }"
+          ]
+        }
+      ]
+    },
+    "ux_flows": {
+      "open_article_from_landing": [
+        "User lands on / with trending tiles.",
+        "User clicks a news tile (data-testid=news-tile).",
+        "Route to /article/[id]; show full article and sidebar with TrailSummaryCard and VerdictBadge."
+      ],
+      "view_trail_from_article": [
+        "On /article/[id], user clicks 'View Full Trail Graph' (data-testid=cta-open-graph).",
+        "Route to /article/[id]/trail.",
+        "Display TrailGraph, TimelineStrip, and list of sources.",
+        "Selecting a node highlights its connections and shows source/ article info."
+      ],
+      "verify_from_article": [
+        "On /article/[id], user clicks 'Open in Verify'.",
+        "Route to /verify?articleId=[id].",
+        "Verify page pre-fills claim and creates a demo VerificationSession.",
+        "ChatPanel shows a short conversation culminating in a final verdict + links back to the article and trail."
+      ],
+      "verify_custom_claim": [
+        "On /verify, user pastes text or URL in ClaimInputForm.",
+        "On submit, call verificationService.startSession.",
+        "Show sequential ChatMessages (user → orchestrator → agents → orchestrator summary) using mock timings.",
+        "Show verdict card and actions: 'View similar trails' (links to /explore/graph) and 'Pin this session' (local-only)."
+      ],
+      "explore_graph": [
+        "User goes to /explore/graph.",
+        "Uses filters to narrow to topic/date.",
+        "In List tab, clicks 'Open Trail' to go to /article/[id]/trail or /trail/[nodeId].",
+        "In Network tab, clicks a cluster bubble to open same detail."
+      ]
+    },
+    "accessibility": {
+      "standards": "WCAG 2.1 AA",
+      "requirements": [
+        "All interactive elements reachable via keyboard.",
+        "Visible focus outlines using focus-visible and ring utilities.",
+        "aria-live region for toasts and chat updates.",
+        "Semantic landmarks: header, nav, main, footer.",
+        "Alt text for all major images (article images, logos).",
+        "ChatPanel uses role=\"log\" or role=\"status\" appropriately for messages."
+      ]
+    },
+    "testing_ids": {
+      "selectors": [
+        "data-testid=cta-feed",
+        "data-testid=cta-verify",
+        "data-testid=news-tile",
+        "data-testid=feed-filter-category",
+        "data-testid=feed-filter-verdict",
+        "data-testid=cta-open-graph",
+        "data-testid=trail-node",
+        "data-testid=trail-edge",
+        "data-testid=chat-input",
+        "data-testid=chat-send",
+        "data-testid=verify-example-claim"
+      ]
+    },
+    "file_structure": {
+      "root": [
+        "app/(marketing)/page.tsx (Landing)",
+        "app/feed/page.tsx",
+        "app/article/[id]/page.tsx",
+        "app/article/[id]/trail/page.tsx",
+        "app/explore/graph/page.tsx",
+        "app/verify/page.tsx",
+        "app/about/page.tsx",
+        "components/NBCard.tsx",
+        "components/NBButton.tsx",
+        "components/VerdictBadge.tsx",
+        "components/NewsTile.tsx",
+        "components/FeedFilterBar.tsx",
+        "components/TrailGraph.tsx",
+        "components/TimelineStrip.tsx",
+        "components/SourceReputationBadge.tsx",
+        "components/ChatPanel.tsx",
+        "components/ClaimInputForm.tsx",
+        "components/TrailSummaryCard.tsx",
+        "components/LayoutShell.tsx",
+        "lib/services/articlesService.ts",
+        "lib/services/nodesService.ts",
+        "lib/services/sourcesService.ts",
+        "lib/services/verificationService.ts",
+        "lib/stores/useUIStore.ts",
+        "lib/types.ts",
+        "public/mock-images/articles/*",
+        "public/mock-images/sources/*"
+      ]
+    },
+    "copy": {
+      "brand": "SatyaTrail (demo)",
+      "tagline": "See how a story spreads before you trust it.",
+      "hero_ctas": ["Browse the News Feed", "Verify a Claim"],
+      "highlights": [
+        "Tile-based feed with quick veracity badges (demo)",
+        "Node-based origin graphs for each story",
+        "Mock multi-agent fact-check explanations",
+        "Source reputation and trail transparency"
+      ]
+    },
+    "acceptance_criteria": [
+      "All pages compile with no TypeScript errors.",
+      "Landing shows a hero section and a grid of trending news tiles; CTAs route to /feed and /verify.",
+      "Feed page lists seeded articles in tile or list view, filters by category/verdict/source, and syncs filters to the URL.",
+      "Article detail page shows full mock article, verdict badge, trail summary, and working buttons to trail and verify pages.",
+      "Trail page shows a node graph, a timeline, and a list of involved sources with roles.",
+      "Explore Graph page allows switching between list and network views and links to individual trails.",
+      "Verify page provides a ChatGPT-like chat experience with deterministic mock messages and a final verdict card.",
+      "All major components exhibit Neo-Brutalist visuals: thick borders, offset shadows, bold colors.",
+      "No real backend, AI, or blockchain calls are performed. All data flows through mock services."
+    },
+    "commands_for_cursor": [
+      "Create React.js (app router) TypeScript project.",
+      "Install dependencies: tailwindcss, @tailwindcss/typography, class-variance-authority, clsx, lucide-react, zustand, zod, react-hook-form, sonner, framer-motion, @radix-ui/react-* (via shadcn/ui).",
+      "Configure Tailwind with provided theme extensions.",
+      "Generate components and pages per file_structure.",
+      "Implement filters using URLSearchParams in /feed and /explore/graph.",
+      "Implement ChatPanel and ClaimInputForm using react-hook-form + zod; show inline error states.",
+      "Implement mock services and deterministic seed data; store to Zustand or local modules for cross-page state.",
+      "Wire toasts (sonner) for key actions like starting verification sessions.",
+      "Ensure responsive layouts (mobile-first, md:grid, lg:grid-cols-12) with clean spacing and ScrollArea where needed.",
+      "Add data-testid attributes as specified.",
+      "Polish interactions and card hover with Framer Motion on key components."
+    ],
+    "seed_data_examples": {
+      "articles": [
+        {
+          "id": "art_001",
+          "headline": "Government announces new urban transport policy",
+          "subheadline": "Policy aims to reduce congestion in major metros by 2030.",
+          "sourceId": "src_01",
+          "sourceName": "City Herald",
+          "author": "Riya Mehta",
+          "publishedAt": "2025-11-20T09:00:00.000Z",
+          "category": "Policy",
+          "body": "Mock article body text explaining the new transport policy, timelines, and expert opinions...",
+          "imageUrl": "/mock-images/articles/transport.jpg",
+          "newsNodeId": "node_001",
+          "verdict": "likely_true",
+          "confidence": 0.83
+        },
+        {
+          "id": "art_002",
+          "headline": "Viral video claims subway tunnel has collapsed",
+          "subheadline": "Clips circulating on social media show dramatic scenes.",
+          "sourceId": "src_02",
+          "sourceName": "MetroBuzz",
+          "author": "Staff Reporter",
+          "publishedAt": "2025-11-21T18:30:00.000Z",
+          "category": "Breaking",
+          "body": "Mock article text summarizing the viral claims and unverified footage...",
+          "imageUrl": "/mock-images/articles/tunnel.jpg",
+          "newsNodeId": "node_002",
+          "verdict": "likely_false",
+          "confidence": 0.9
+        }
+      ],
+      "newsNodes": [
+        {
+          "id": "node_001",
+          "canonicalClaim": "Government announced a new national urban transport policy for major Indian metros.",
+          "summary": "Multiple outlets report on a new transport policy with official press release references.",
+          "primaryArticleId": "art_001",
+          "articleIds": ["art_001"],
+          "originSourceId": "src_03",
+          "originPublishedAt": "2025-11-20T08:30:00.000Z",
+          "verdict": "likely_true",
+          "confidence": 0.85,
+          "agentsSummary": "Official documents and consistent reports from reputable sources."
+        },
+        {
+          "id": "node_002",
+          "canonicalClaim": "A subway tunnel in City X has collapsed causing major casualties.",
+          "summary": "Claim propagated via social media before being denied by authorities and local media.",
+          "primaryArticleId": "art_002",
+          "articleIds": ["art_002"],
+          "originSourceId": "src_04",
+          "originPublishedAt": "2025-11-21T17:45:00.000Z",
+          "verdict": "likely_false",
+          "confidence": 0.9,
+          "agentsSummary": "Authorities deny incident; images match older footage from another country."
+        }
+      ],
+      "sources": [
+        {
+          "id": "src_01",
+          "name": "City Herald",
+          "domain": "cityherald.example",
+          "reputationScore": 82,
+          "type": "news"
+        },
+        {
+          "id": "src_02",
+          "name": "MetroBuzz",
+          "domain": "metrobuzz.example",
+          "reputationScore": 55,
+          "type": "news"
+        },
+        {
+          "id": "src_03",
+          "name": "Press Bureau",
+          "domain": "pressbureau.example",
+          "reputationScore": 95,
+          "type": "official"
+        },
+        {
+          "id": "src_04",
+          "name": "ViralClipsChannel",
+          "domain": "viralclips.example",
+          "reputationScore": 35,
+          "type": "social"
+        }
+      ]
+    }
+  }

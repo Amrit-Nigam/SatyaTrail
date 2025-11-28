@@ -1,0 +1,253 @@
+# prompt.toon
+
+> Use this file as the single canonical prompt for the AI model that will generate and run the backend described below. Include every reference and requirement from the refined prompt; do not omit any reference to @prompt.json or folder structure.
+
+---
+
+## Overview
+
+Build a complete end-to-end backend system for AI-powered news verification using **GPT-5 (highest available tier)**, **Tavily Search**, multi-agent orchestration, source-graph tracing, blockchain storage for immutable references, and bot integrations (Telegram and Twitter/X). The backend must be placed inside a folder named `backend` and follow the exact folder structure and endpoints described below. This prompt must serve as the authoritative specification for generating runnable production-ready backend code with zero missing logic.
+
+**Important:** Always use Tavily for web search. Always use GPT-5 (no fallback to other models). Use the features and configuration provided in `@prompt.json` as a reference for frontend expectations and any feature flags—do not omit or contradict references from `@prompt.json`.
+
+---
+
+## Mandatory Tech Stack
+
+* Node.js (LTS) + Express (or Fastify if justified) for the HTTP API
+* Tavily Search API for browsing/search
+* OpenAI GPT-5 API for reasoning and agent responses (use the highest-tier GPT-5 model available)
+* MongoDB or PostgreSQL for off-chain storage (metadata, graphs)
+* Blockchain for immutability (preferred: Polygon or Solana). Store only hash + metadata on-chain, keep full graph off-chain.
+* Telegram Bot (telegraf or node-telegram-bot-api)
+* Twitter/X Bot (v2 API) for monitoring mentions and replying
+* Dockerfile + docker-compose for local dev
+
+---
+
+## Required Folder Structure (Exact)
+
+```
+backend/
+  server.js (or index.js)
+  package.json
+  .env.example
+  routes/
+    verifyNews.js
+    extension.js
+    agents/
+      orchestrator.js
+      toiAgent.js
+      indiaTimesAgent.js
+      ndtvAgent.js
+      genericAgent.js
+    webhooks/
+      telegramWebhook.js
+      twitterWebhook.js
+  services/
+    tavilyService.js
+    openaiService.js
+    blockchainService.js
+    graphService.js
+  controllers/
+    verifyController.js
+    extensionController.js
+  models/
+    SourceGraph.js
+    AgentReport.js
+    Reputation.js
+  utils/
+    reputationSystem.js
+    validators.js
+    cors.js
+    logger.js
+  telegram/
+    bot.js
+    handlers.js
+  twitter/
+    bot.js
+    handlers.js
+  scripts/
+    storeGraphOnChain.js
+  README.md
+  docker-compose.yml
+  Dockerfile
+```
+
+---
+
+## API Endpoints (Responses must be stable JSON structures)
+
+### 1. POST /api/v1/verify
+
+Request body: `{ "url": "<article_url>", "text": "<optional_raw_text>", "source": "frontend|telegram|twitter|extension" }`
+Response JSON (required fields):
+
+```
+{
+  "verdict": "true|false|mixed|unknown",
+  "accuracy_score": 0.0-100.0,
+  "agent_reports": [ { agent_name, credibility_score, summary, evidence_links, reasoning } ],
+  "source_graph": { nodes: [...], edges: [...] },
+  "blockchain_hash": "<on-chain-hash>",
+  "timestamp": "ISO8601",
+  "metadata": { ... }
+}
+```
+
+### 2. POST /api/v1/verify/extension
+
+* Same body as /verify but optimized for browser extension usage. Returns compact response with same stable schema.
+
+### 3. POST /api/v1/webhook/telegram
+
+* Receives telegram updates if webhook mode used; otherwise the `telegram/bot.js` can use polling.
+
+### 4. POST /api/v1/webhook/twitter
+
+* Receives twitter mention events; triggers verification pipeline.
+
+---
+
+## Multi-Agent System & Orchestrator
+
+* Each configured news outlet must have an agent implementation. At minimum include sample agents for `TOI`, `IndiaTimes`, `NDTV`, and a `genericAgent` capable of verifying using Tavily + GPT-5.
+* Agent responsibilities:
+
+  * Use Tavily to fetch relevant pages and documents for the claim/article.
+  * Use GPT-5 with agent-specific prompts (reflecting that agent's likely editorial voice and bias profile) to evaluate evidence.
+  * Produce structured output: `{ agent_name, credibility_score (0-100), confidence, evidence_links[], summary, detailed_reasoning }`.
+* Orchestrator responsibilities:
+
+  * Run agents in parallel (orchestrated but independent).
+  * Aggregate agent outputs into final verdict using weighted scoring (weight by agent reputation and evidence quality).
+  * Update agent reputation after each verification run using `reputationSystem` (reputation decays or grows based on agreement with ground evidence and future validations).
+
+Include sample reputation algorithm in `utils/reputationSystem.js` (document the formula in README).
+
+---
+
+## Source Graph Tracing
+
+* Build a directed graph of sources where nodes are articles/pages/accounts and edges are attribution/citation links.
+* Include `graphService` capable of:
+
+  * Parsing candidate pages for explicit references, quoted text, timestamps, authors
+  * Detecting same-claim clusters using fuzzy matching and semantic similarity via GPT-5
+  * Creating nodes and edges with provenance metadata (source_url, timestamp, snippet, author)
+* Hash the canonical serialized graph (canonical JSON with deterministic key ordering) and write the hash + minimal metadata to-chain using `blockchainService`. Store the full graph in DB.
+
+---
+
+## Blockchain Storage Guidance
+
+* Prefer Polygon or Solana.
+* Write only: `graph_hash`, `timestamp`, `verdict_snapshot` to the chain.
+* Provide `scripts/storeGraphOnChain.js` and `services/blockchainService.js` that can be configured with RPC key and private key via environment variables. Provide a dry-run / testnet mode by default in `.env.example`.
+
+---
+
+## Tavily Integration
+
+* `services/tavilyService.js` must expose:
+
+  * `search(query, options)` → returns top N results with metadata (url, title, snippet, publish_date, domain_reputation_score)
+  * `fetch(url)` → returns full article text + extracted metadata
+* Ensure recency filters and domain reputation heuristics are applied.
+* Use Tavily for all browsing/search tasks. Do not fallback to other search engines.
+
+---
+
+## OpenAI GPT-5 Integration
+
+* `services/openaiService.js` must wrap GPT-5 calls with robust retry, rate-limiting, and safety checks.
+* Provide templated prompts for:
+
+  * Agent verification prompt (one for each agent with agent-specific bias descriptors)
+  * Graph canonicalization / deduplication prompt
+  * Final verdict aggregation prompt (for the orchestrator)
+* Always use the highest-tier GPT-5 model string available (configurable via `.env` but default to `gpt-5` or the provider's high-tier name). Include a strict rule: if model name is missing, fail loudly—do not default to GPT-4.
+
+---
+
+## Telegram Bot
+
+* `telegram/bot.js` should implement a bot that can be tagged or DM'd. On receiving a message that contains a link or a claim, call `/api/v1/verify` and reply with a compact verdict card, plus a permalink to the full result on the backend (or the blockchain hash).
+* Implement rate-limiting and anti-abuse checks in the bot.
+* Provide support for both polling and webhook deployment modes (configurable via `.env`).
+
+---
+
+## Twitter/X Bot
+
+* `twitter/bot.js` monitors mentions (or get filtered stream) and triggers the verification pipeline. For each reply, post a short verdict plus a link to the full report.
+* Respect Twitter API rate limits.
+
+---
+
+## Browser Extension Hook
+
+* Expose `POST /api/v1/verify/extension` used by extension content scripts. Response must be compact and fast. Include a `detail_url` field referencing the backend report.
+
+---
+
+## Frontend Integration Requirements
+
+* Provide stable JSON schema (as shown above) and document all fields in `README.md`.
+* Enable CORS for the frontend origin(s) defined in `@prompt.json`.
+* Ensure every route used by the frontend is implemented and documented.
+
+---
+
+## Security & Operational Considerations
+
+* `.env.example` must include:
+
+  * OPENAI_API_KEY
+  * TAVILY_API_KEY
+  * BLOCKCHAIN_RPC_URL
+  * BLOCKCHAIN_PRIVATE_KEY (for testnet by default)
+  * TELEGRAM_BOT_TOKEN
+  * TWITTER_API_KEY / TWITTER_API_SECRET / TWITTER_BEARER_TOKEN
+  * DATABASE_URL
+  * NODE_ENV
+  * PORT
+  * MODEL_NAME (default to GPT-5 highest tier)
+* Implement input validation and sanitization in `utils/validators.js`.
+* Implement logging and structured error responses in `utils/logger.js`.
+* Include Dockerfile + docker-compose for local testing (services: backend, mongo/postgres).
+
+---
+
+## README Requirements
+
+* Explain setup steps, environment variables, running locally (docker-compose), and deploying to a cloud provider.
+* Explain how to configure blockchain network (testnet by default) and how to perform a write (dry-run flow).
+* Document all API endpoints and response schema, plus example requests and responses.
+
+---
+
+## Output Requirements
+
+When an AI uses this prompt to generate the backend, it must output a ZIP or file tree containing the full `backend` folder with all files implemented and runnable. The code must contain inline comments explaining complex logic (orchestration, reputation math, graph canonicalization). Provide unit tests for the core logic (agent aggregation, reputation update, graph hashing). Provide examples of agent prompt templates (in `services/openaiService.js` or `templates/agent_prompts/`).
+
+---
+
+## Non-Functional Requirements
+
+* High observability: give clear logs for agent runs and blockchain writes.
+* Deterministic graph hashing: use canonical JSON serialization (explain chosen library) before hashing.
+* Replaceable blockchain backend: implement an abstraction in `services/blockchainService.js` allowing swapping chain providers.
+
+---
+
+## Final Notes and Exact References
+
+* **Reference @prompt.json**: Always incorporate feature flags and fields from the project's `@prompt.json`—especially frontend endpoints, CORS origins, and UI feature flags. If `@prompt.json` contains contradictory constraints, prefer explicit instructions in this `prompt.toon` file but log the discrepancy and include both options in the README.
+* **Tavily**: Use Tavily for all search/browse activities—no exceptions.
+* **GPT-5**: Use GPT-5 highest tier. If the environment cannot provide GPT-5, fail with an explicit error (no silent fallback).
+* **Folder naming**: backend folder must contain `telegram/` and `twitter/` subfolders exactly as specified.
+
+---
+
+End of `prompt.toon`. Use this file as the canonical system prompt for any code-generation step, and do not omit any references described above. Ensure all generated backend code strictly adheres to these requirements.
