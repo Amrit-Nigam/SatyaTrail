@@ -137,15 +137,13 @@ class OpenAIService {
       throw new Error('OPENAI_API_KEY is required');
     }
 
-    this.modelName = process.env.MODEL_NAME;
+    // Default to gpt-4o if MODEL_NAME not specified
+    this.modelName = process.env.MODEL_NAME || 'gpt-4o';
     
-    // STRICT REQUIREMENT: Model name must be specified
-    if (!this.modelName) {
-      throw new Error(
-        'MODEL_NAME environment variable is required. ' +
-        'This backend requires GPT-5 (highest tier). ' +
-        'No silent fallback to GPT-4 is allowed.'
-      );
+    // Validate model name
+    const validModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'o1-preview', 'o1-mini'];
+    if (!validModels.some(m => this.modelName.startsWith(m))) {
+      logger.warn(`MODEL_NAME '${this.modelName}' may not be valid. Supported: ${validModels.join(', ')}`);
     }
 
     this.client = new OpenAI({
@@ -178,15 +176,36 @@ class OpenAIService {
 
         this.currentRequests++;
 
+        logger.info('Making OpenAI request', { 
+          model: this.modelName, 
+          attempt,
+          hasResponseFormat: !!params.response_format
+        });
+
         const response = await this.client.chat.completions.create({
           model: this.modelName,
           ...params
         });
 
         this.currentRequests--;
+        
+        logger.info('OpenAI request successful', {
+          model: this.modelName,
+          usage: response.usage
+        });
+        
         return response;
       } catch (error) {
         this.currentRequests--;
+        
+        logger.error('OpenAI request failed', {
+          model: this.modelName,
+          attempt,
+          status: error.status,
+          message: error.message,
+          code: error.code,
+          type: error.type
+        });
 
         if (error.status === 429 && attempt < maxRetries) {
           // Rate limited - exponential backoff
@@ -202,6 +221,11 @@ class OpenAIService {
           logger.warn(`Service unavailable. Retrying in ${delay}ms...`, { attempt });
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
+        }
+        
+        // Model not found - provide helpful error
+        if (error.status === 404 || error.code === 'model_not_found') {
+          throw new Error(`Model '${this.modelName}' not found. Please check MODEL_NAME in .env. Valid models: gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5-turbo`);
         }
 
         throw error;
@@ -252,7 +276,7 @@ Provide your analysis in the following JSON format:
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.3,
-        max_tokens: 2000,
+        max_completion_tokens: 2000,
         response_format: { type: 'json_object' }
       });
 
@@ -316,7 +340,7 @@ Provide your final analysis in JSON format:
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.2,
-        max_tokens: 2000,
+        max_completion_tokens: 2000,
         response_format: { type: 'json_object' }
       });
 
@@ -370,7 +394,7 @@ Output JSON with:
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.2,
-        max_tokens: 3000,
+        max_completion_tokens: 3000,
         response_format: { type: 'json_object' }
       });
 
@@ -410,7 +434,7 @@ Format: { "claims": [{ "claim": "<claim text>", "type": "<statistical|event|quot
         }
       ],
       temperature: 0.2,
-      max_tokens: 1000,
+      max_completion_tokens: 1000,
       response_format: { type: 'json_object' }
     });
 

@@ -35,6 +35,26 @@ const corsOptions = {
       return callback(null, true);
     }
     
+    // Allow Chrome extensions (chrome-extension://)
+    if (origin.startsWith('chrome-extension://')) {
+      return callback(null, true);
+    }
+    
+    // Allow Brave extensions (brave-extension://)
+    if (origin.startsWith('brave-extension://')) {
+      return callback(null, true);
+    }
+    
+    // Allow Firefox extensions (moz-extension://)
+    if (origin.startsWith('moz-extension://')) {
+      return callback(null, true);
+    }
+    
+    // Allow Edge extensions (extension://)
+    if (origin.startsWith('extension://')) {
+      return callback(null, true);
+    }
+    
     // Check if origin is allowed
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
