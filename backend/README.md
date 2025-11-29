@@ -64,7 +64,7 @@ npm start
 
 5. **Test the API**:
 ```bash
-curl http://localhost:3001/health
+curl https://satyatrail.onrender.com/health
 ```
 
 ### Using Docker

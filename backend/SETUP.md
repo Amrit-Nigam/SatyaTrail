@@ -78,7 +78,7 @@ npm start
 Connected to MongoDB database
 SatyaTrail backend server running on port 3001
 Environment: development
-Health check: http://localhost:3001/health
+Health check: https://satyatrail.onrender.com/health
 ```
 
 ### Step 5: Verify Server is Running
@@ -86,7 +86,7 @@ Health check: http://localhost:3001/health
 Open your browser or use curl:
 
 ```bash
-curl http://localhost:3001/health
+curl https://satyatrail.onrender.com/health
 ```
 
 **Expected response**:
@@ -102,7 +102,7 @@ curl http://localhost:3001/health
 }
 ```
 
-Or visit: http://localhost:3001/health
+Or visit: https://satyatrail.onrender.com/health
 
 ### Step 6: Test All Routes (Optional)
 
@@ -255,10 +255,10 @@ Once running, the backend provides:
 
 After successful setup:
 
-1. ✅ Server running on http://localhost:3001
+1. ✅ Server running on https://satyatrail.onrender.com
 2. ✅ Health check passing
 3. ✅ Test routes with `npm run test:routes`
-4. ✅ Connect frontend (set `VITE_API_URL=http://localhost:3001` in frontend `.env`)
+4. ✅ Connect frontend (set `VITE_API_URL=https://satyatrail.onrender.com` in frontend `.env`)
 
 ## Project Structure
 
@@ -291,5 +291,5 @@ backend/
 
 ---
 
-**Ready to go!** Start the server with `npm run dev` and verify it's working at http://localhost:3001/health
+**Ready to go!** Start the server with `npm run dev` and verify it's working at https://satyatrail.onrender.com/health
 

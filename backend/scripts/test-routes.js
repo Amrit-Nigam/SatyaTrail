@@ -11,7 +11,7 @@ require('dotenv').config();
 const axios = require('axios');
 
 // Configuration
-const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3001';
+const BASE_URL = process.env.TEST_BASE_URL || 'https://satyatrail.onrender.com';
 const COLORS = {
   reset: '\x1b[0m',
   bright: '\x1b[1m',
@@ -48,7 +48,7 @@ const log = {
  */
 async function test(name, testFn, options = {}) {
   const { skip = false, expectError = false } = options;
-  
+
   if (skip) {
     log.warn(`SKIP: ${name}`);
     results.skipped++;
@@ -59,18 +59,18 @@ async function test(name, testFn, options = {}) {
   try {
     log.info(`Testing: ${name}`);
     const result = await testFn();
-    
+
     if (expectError && result.error) {
       log.success(`${name} - Expected error occurred`);
       results.passed++;
       results.tests.push({ name, status: 'passed', note: 'Expected error' });
       return result;
     }
-    
+
     if (result.error && !expectError) {
       throw new Error(result.error);
     }
-    
+
     log.success(`${name} - PASSED`);
     if (result.data) {
       log.detail(`Response: ${JSON.stringify(result.data).substring(0, 100)}...`);
@@ -133,7 +133,7 @@ async function request(method, endpoint, data = null, headers = {}) {
  */
 async function testHealthCheck() {
   log.section('🏥 Health Check');
-  
+
   await test('GET /health', async () => {
     const result = await request('GET', '/health');
     if (result.status !== 200) {
@@ -151,9 +151,9 @@ async function testHealthCheck() {
  */
 async function testVerifyNewsRoutes() {
   log.section('📰 Verify News Routes');
-  
+
   let verificationHash = null;
-  
+
   // Test POST /api/v1/verify
   await test('POST /api/v1/verify (with text)', async () => {
     const result = await request('POST', '/api/v1/verify', {
@@ -161,114 +161,114 @@ async function testVerifyNewsRoutes() {
       source: 'frontend',
       testMode: true // Use mock mode for testing
     });
-    
+
     if (result.status !== 200 && result.status !== 201) {
       throw new Error(`Expected 200/201, got ${result.status}`);
     }
-    
+
     if (result.data && result.data.source_graph?.hash) {
       verificationHash = result.data.source_graph.hash;
       log.detail(`Verification hash: ${verificationHash}`);
     }
-    
+
     return result;
   });
-  
+
   await test('POST /api/v1/verify (with URL)', async () => {
     const result = await request('POST', '/api/v1/verify', {
       url: 'https://example.com/news-article',
       source: 'frontend',
       testMode: true // Use mock mode for testing
     });
-    
+
     if (result.status !== 200 && result.status !== 201) {
       throw new Error(`Expected 200/201, got ${result.status}`);
     }
-    
+
     return result;
   });
-  
+
   await test('POST /api/v1/verify (missing params)', async () => {
     const result = await request('POST', '/api/v1/verify', {
       source: 'frontend'
     });
-    
+
     // Should return 400 for missing url/text
     if (result.status !== 400) {
       throw new Error(`Expected 400 for missing params, got ${result.status}`);
     }
-    
+
     return result;
   }, { expectError: true });
-  
+
   // Test GET /api/v1/verify/recent
   await test('GET /api/v1/verify/recent', async () => {
     const result = await request('GET', '/api/v1/verify/recent');
-    
+
     if (result.status !== 200) {
       throw new Error(`Expected 200, got ${result.status}`);
     }
-    
+
     if (!result.data.verifications || !Array.isArray(result.data.verifications)) {
       throw new Error('Response should have verifications array');
     }
-    
+
     return result;
   });
-  
+
   await test('GET /api/v1/verify/recent?limit=5', async () => {
     const result = await request('GET', '/api/v1/verify/recent?limit=5');
-    
+
     if (result.status !== 200) {
       throw new Error(`Expected 200, got ${result.status}`);
     }
-    
+
     return result;
   });
-  
+
   // Test GET /api/v1/verify/stats
   await test('GET /api/v1/verify/stats', async () => {
     const result = await request('GET', '/api/v1/verify/stats');
-    
+
     if (result.status !== 200) {
       throw new Error(`Expected 200, got ${result.status}`);
     }
-    
+
     return result;
   });
-  
+
   // Test GET /api/v1/verify/:hash
   // Test 1: Invalid hash format (not 64 hex chars) - should return 404
   await test('GET /api/v1/verify/:hash (invalid format)', async () => {
     const result = await request('GET', '/api/v1/verify/invalid-hash-12345');
-    
+
     // Should return 404 for invalid hash format
     if (result.status !== 404) {
       throw new Error(`Expected 404 for invalid hash format, got ${result.status}`);
     }
-    
+
     if (!result.data.message.includes('Invalid hash format')) {
       throw new Error('Should indicate invalid hash format');
     }
-    
+
     return result;
   }, { expectError: true });
-  
+
   // Test 2: Valid hash format but non-existent - should return 404
   await test('GET /api/v1/verify/:hash (valid format, not found)', async () => {
     // Valid 64-char hex hash that doesn't exist
     const fakeHash = 'a'.repeat(64);
     const result = await request('GET', `/api/v1/verify/${fakeHash}`);
-    
+
     // Should return 404 for non-existent hash
     if (result.status !== 404) {
       throw new Error(`Expected 404 for non-existent hash, got ${result.status}`);
     }
-    
+
     if (!result.data.message.includes('Verification not found')) {
       throw new Error('Should indicate verification not found');
     }
-    
+
     return result;
   }, { expectError: true });
 
@@ -285,72 +285,72 @@ async function testVerifyNewsRoutes() {
  */
 async function testExtensionRoutes() {
   log.section('🔌 Extension Routes');
-  
+
   // Test GET /api/v1/verify/extension/status
   await test('GET /api/v1/verify/extension/status', async () => {
     const result = await request('GET', '/api/v1/verify/extension/status');
-    
+
     if (result.status !== 200) {
       throw new Error(`Expected 200, got ${result.status}`);
     }
-    
+
     if (!result.data.status) {
       throw new Error('Response should have status field');
     }
-    
+
     return result;
   });
-  
+
   // Test GET /api/v1/verify/extension/check
   await test('GET /api/v1/verify/extension/check?url=https://example.com', async () => {
     const result = await request('GET', '/api/v1/verify/extension/check?url=https://example.com');
-    
+
     if (result.status !== 200) {
       throw new Error(`Expected 200, got ${result.status}`);
     }
-    
+
     if (typeof result.data.found !== 'boolean') {
       throw new Error('Response should have found boolean field');
     }
-    
+
     return result;
   });
-  
+
   await test('GET /api/v1/verify/extension/check (missing url)', async () => {
     const result = await request('GET', '/api/v1/verify/extension/check');
-    
+
     // Should return 400 for missing url
     if (result.status !== 400) {
       throw new Error(`Expected 400 for missing url, got ${result.status}`);
     }
-    
+
     return result;
   }, { expectError: true });
-  
+
   // Test POST /api/v1/verify/extension
   await test('POST /api/v1/verify/extension (with text)', async () => {
     const result = await request('POST', '/api/v1/verify/extension', {
       text: 'Quick verification test for the browser extension endpoint with enough characters.',
       testMode: true // Use mock mode for testing
     });
-    
+
     if (result.status !== 200 && result.status !== 201) {
       throw new Error(`Expected 200/201, got ${result.status}`);
     }
-    
+
     return result;
   });
-  
+
   await test('POST /api/v1/verify/extension (with URL)', async () => {
     const result = await request('POST', '/api/v1/verify/extension', {
       url: 'https://example.com/article',
       testMode: true // Use mock mode for testing
     });
-    
+
     if (result.status !== 200 && result.status !== 201) {
       throw new Error(`Expected 200/201, got ${result.status}`);
     }
-    
+
     return result;
   });
 }
@@ -360,22 +360,22 @@ async function testExtensionRoutes() {
  */
 async function testWebhookRoutes() {
   log.section('🔔 Webhook Routes');
-  
+
   // Test GET /api/v1/webhook/telegram
   await test('GET /api/v1/webhook/telegram', async () => {
     const result = await request('GET', '/api/v1/webhook/telegram');
-    
+
     if (result.status !== 200) {
       throw new Error(`Expected 200, got ${result.status}`);
     }
-    
+
     if (result.data.platform !== 'telegram') {
       throw new Error('Response should indicate telegram platform');
     }
-    
+
     return result;
   });
-  
+
   // Test POST /api/v1/webhook/telegram
   await test('POST /api/v1/webhook/telegram', async () => {
     const result = await request('POST', '/api/v1/webhook/telegram', {
@@ -387,43 +387,43 @@ async function testWebhookRoutes() {
         text: '/start'
       }
     });
-    
+
     // Should return 200 (webhooks typically return 200 even on errors)
     if (result.status !== 200) {
       throw new Error(`Expected 200, got ${result.status}`);
     }
-    
+
     return result;
   });
-  
+
   // Test GET /api/v1/webhook/twitter (CRC validation)
   await test('GET /api/v1/webhook/twitter (CRC validation)', async () => {
     const result = await request('GET', '/api/v1/webhook/twitter?crc_token=test-token-123');
-    
+
     // May return 200 with response_token or 500 if not configured
     if (result.status === 500 && result.data.error === 'Configuration error') {
       log.warn('Twitter webhook not configured (expected)');
       return result;
     }
-    
+
     if (result.status === 200 && !result.data.response_token) {
       throw new Error('Response should have response_token for valid CRC');
     }
-    
+
     return result;
   });
-  
+
   await test('GET /api/v1/webhook/twitter (missing crc_token)', async () => {
     const result = await request('GET', '/api/v1/webhook/twitter');
-    
+
     // Should return 400 for missing crc_token
     if (result.status !== 400) {
       throw new Error(`Expected 400 for missing crc_token, got ${result.status}`);
     }
-    
+
     return result;
   }, { expectError: true });
-  
+
   // Test POST /api/v1/webhook/twitter
   await test('POST /api/v1/webhook/twitter', async () => {
     const result = await request('POST', '/api/v1/webhook/twitter', {
@@ -434,12 +434,12 @@ async function testWebhookRoutes() {
         user: { id: '12345', screen_name: 'testuser' }
       }]
     });
-    
+
     // Should return 200 (webhooks typically return 200 even on errors)
     if (result.status !== 200) {
       throw new Error(`Expected 200, got ${result.status}`);
     }
-    
+
     return result;
   });
 }
@@ -449,18 +449,18 @@ async function testWebhookRoutes() {
  */
 async function test404Handler() {
   log.section('❌ Error Handling');
-  
+
   await test('GET /nonexistent-route (404)', async () => {
     const result = await request('GET', '/nonexistent-route');
-    
+
     if (result.status !== 404) {
       throw new Error(`Expected 404, got ${result.status}`);
     }
-    
+
     if (!result.data.error || result.data.error !== 'Not Found') {
       throw new Error('Response should indicate Not Found error');
     }
-    
+
     return result;
   }, { expectError: true });
 }
@@ -470,16 +470,16 @@ async function test404Handler() {
  */
 function printSummary() {
   log.section('📊 Test Summary');
-  
+
   const total = results.passed + results.failed + results.skipped;
   const passRate = total > 0 ? ((results.passed / total) * 100).toFixed(1) : 0;
-  
+
   console.log(`\n${COLORS.bright}Total Tests:${COLORS.reset} ${total}`);
   console.log(`${COLORS.green}Passed:${COLORS.reset} ${results.passed}`);
   console.log(`${COLORS.red}Failed:${COLORS.reset} ${results.failed}`);
   console.log(`${COLORS.yellow}Skipped:${COLORS.reset} ${results.skipped}`);
   console.log(`${COLORS.cyan}Pass Rate:${COLORS.reset} ${passRate}%\n`);
-  
+
   if (results.failed > 0) {
     log.error('Failed Tests:');
     results.tests
@@ -491,7 +491,7 @@ function printSummary() {
         }
       });
   }
-  
+
   if (results.failed === 0) {
     log.success('All tests passed! 🎉');
   } else {
@@ -508,9 +508,9 @@ async function runTests() {
 ║         SatyaTrail Backend Routes Test Suite            ║
 ╚══════════════════════════════════════════════════════════╝
 ${COLORS.reset}`);
-  
+
   log.info(`Testing backend at: ${BASE_URL}\n`);
-  
+
   try {
     // Check if server is reachable
     try {
@@ -522,17 +522,17 @@ ${COLORS.reset}`);
       log.error('Start it with: npm start or npm run dev');
       process.exit(1);
     }
-    
+
     // Run all test suites
     await testHealthCheck();
     await testVerifyNewsRoutes();
     await testExtensionRoutes();
     await testWebhookRoutes();
     await test404Handler();
-    
+
     // Print summary
     printSummary();
-    
+
     // Exit with appropriate code
     process.exit(results.failed > 0 ? 1 : 0);
   } catch (error) {

@@ -3,7 +3,7 @@
  * Handles all communication with the backend server
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://satyatrail.onrender.com'
 
 /**
  * Custom error class for API errors
@@ -25,7 +25,7 @@ export class APIError extends Error {
  */
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`
-  
+
   const config = {
     headers: {
       'Content-Type': 'application/json',
@@ -36,9 +36,9 @@ async function request(endpoint, options = {}) {
 
   try {
     const response = await fetch(url, config)
-    
+
     const data = await response.json().catch(() => ({}))
-    
+
     if (!response.ok) {
       throw new APIError(
         data.message || data.error || 'An error occurred',
@@ -46,13 +46,13 @@ async function request(endpoint, options = {}) {
         data
       )
     }
-    
+
     return data
   } catch (error) {
     if (error instanceof APIError) {
       throw error
     }
-    
+
     // Network error or other fetch error
     throw new APIError(
       error.message || 'Network error - please check your connection',

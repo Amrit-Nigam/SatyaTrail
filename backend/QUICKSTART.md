@@ -45,14 +45,14 @@ npm start
 
 ### 5. Verify It's Running
 
-The server should start on `http://localhost:3001` (or your configured PORT).
+The server should start on `https://satyatrail.onrender.com` (or your configured PORT).
 
 Test the health endpoint:
 ```bash
-curl http://localhost:3001/health
+curl https://satyatrail.onrender.com/health
 ```
 
-Or open in browser: http://localhost:3001/health
+Or open in browser: https://satyatrail.onrender.com/health
 
 You should see:
 ```json
@@ -111,10 +111,10 @@ docker-compose down
 
 ## Next Steps
 
-1. ✅ Server running on http://localhost:3001
+1. ✅ Server running on https://satyatrail.onrender.com
 2. ✅ Health check passing
 3. ✅ Test routes with `npm run test:routes`
-4. ✅ Connect frontend (set `VITE_API_URL=http://localhost:3001` in frontend `.env`)
+4. ✅ Connect frontend (set `VITE_API_URL=https://satyatrail.onrender.com` in frontend `.env`)
 
 ## Available Scripts
 
