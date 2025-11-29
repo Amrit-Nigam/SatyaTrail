@@ -115,6 +115,30 @@ export const apiClient = {
   },
 
   /**
+   * Get reputation leaderboard
+   * @param {number} [limit=10]
+   */
+  async getReputationLeaderboard(limit = 10) {
+    return request(`/api/v1/reputation/leaderboard?limit=${limit}`)
+  },
+
+  /**
+   * Get all reputations
+   */
+  async getAllReputations() {
+    return request('/api/v1/reputation/all')
+  },
+
+  /**
+   * Get detailed insight for a single agent
+   * @param {string} agentName
+   */
+  async getReputationInsight(agentName) {
+    const encoded = encodeURIComponent(agentName)
+    return request(`/api/v1/reputation/${encoded}`)
+  },
+
+  /**
    * Quick verification for browser extension
    * @param {Object} params
    * @param {string} [params.url] - URL to verify

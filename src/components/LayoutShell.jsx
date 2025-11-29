@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { Search, Menu, X, User, Newspaper, GitBranch, CheckCircle, Info } from 'lucide-react'
+import { Search, Menu, X, User, Newspaper, CheckCircle, Info, Trophy } from 'lucide-react'
 import { cn } from '../lib/utils'
 
 const navLinks = [
   { to: '/feed', label: 'Feed', icon: Newspaper },
   { to: '/verify', label: 'Verify', icon: CheckCircle },
+  { to: '/rankings', label: 'Rankings', icon: Trophy },
   { to: '/about', label: 'About', icon: Info }
 ]
 

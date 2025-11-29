@@ -8,6 +8,7 @@ import ArticleTrail from './pages/ArticleTrail'
 import ExploreGraph from './pages/ExploreGraph'
 import Verify from './pages/Verify'
 import About from './pages/About'
+import Rankings from './pages/Rankings'
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/article/:id/trail" element={<ArticleTrail />} />
           <Route path="/explore/graph" element={<ExploreGraph />} />
           <Route path="/verify" element={<Verify />} />
+          <Route path="/rankings" element={<Rankings />} />
           <Route path="/about" element={<About />} />
         </Routes>
       </LayoutShell>
