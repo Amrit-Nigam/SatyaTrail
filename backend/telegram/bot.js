@@ -232,18 +232,14 @@ class TelegramBot {
       }
     });
 
-    // Handle photos with captions (can contain URLs)
+    // Handle photos - analyze for authenticity
     this.bot.on('photo', async (ctx) => {
-      const caption = ctx.message.caption;
-      if (caption && (caption.includes('http') || caption.length > 20)) {
-        await handlers.handleText({
-          ...ctx,
-          message: { ...ctx.message, text: caption }
-        });
-      }
+      console.log('[Telegram Bot] 📸 Photo received, delegating to handlePhoto');
+      await handlers.handlePhoto(ctx);
     });
 
     logger.info('Telegram handlers registered');
+    console.log('[Telegram Bot] ✅ All handlers registered including photo handler');
   }
 
   /**

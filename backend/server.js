@@ -22,6 +22,7 @@ const verifyNewsRoutes = require('./routes/verifyNews');
 const extensionRoutes = require('./routes/extension');
 const telegramWebhook = require('./routes/webhooks/telegramWebhook');
 const twitterWebhook = require('./routes/webhooks/twitterWebhook');
+const whatsappWebhook = require('./routes/webhooks/whatsappWebhook');
 
 // Validate critical environment variables
 const validateEnvironment = () => {
@@ -72,6 +73,7 @@ app.use('/api/v1/verify', verifyNewsRoutes);
 app.use('/api/v1/verify/extension', extensionRoutes);
 app.use('/api/v1/webhook/telegram', telegramWebhook);
 app.use('/api/v1/webhook/twitter', twitterWebhook);
+app.use('/api/v1/webhook/whatsapp', whatsappWebhook);
 
 // 404 handler
 app.use((req, res) => {
@@ -119,6 +121,23 @@ const connectDatabase = async () => {
 const initializeBots = async () => {
   // Initialize bots in parallel with timeout
   const botPromises = [];
+
+  // Check WhatsApp/Twilio configuration (webhook-based, no active initialization needed)
+  if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+    console.log('📱 WhatsApp (Twilio) webhook configured');
+    logger.info('WhatsApp (Twilio) webhook ready', {
+      hasAccountSid: true,
+      hasAuthToken: true,
+      whatsappNumber: process.env.TWILIO_WHATSAPP_NUMBER || 'not set',
+      webhookPath: '/api/v1/webhook/whatsapp'
+    });
+  } else {
+    console.log('⚠️  WhatsApp (Twilio) not configured - missing TWILIO_ACCOUNT_SID or TWILIO_AUTH_TOKEN');
+    logger.warn('WhatsApp (Twilio) not configured', {
+      hasAccountSid: !!process.env.TWILIO_ACCOUNT_SID,
+      hasAuthToken: !!process.env.TWILIO_AUTH_TOKEN
+    });
+  }
 
   // Initialize Telegram bot
   if (process.env.TELEGRAM_BOT_TOKEN) {
