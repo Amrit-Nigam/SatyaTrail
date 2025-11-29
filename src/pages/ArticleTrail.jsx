@@ -188,9 +188,14 @@ export default function ArticleTrail() {
               <div className="flex items-center gap-2">
                 <LinkIcon className="w-5 h-5 text-black" />
                 <span className="text-sm text-nb-ink/70">On-chain:</span>
-                <span className="font-semibold font-mono text-xs text-black">
+                <a
+                  href={`https://sepolia.etherscan.io/tx/${trail.node.blockchainHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold font-mono text-xs text-black hover:underline"
+                >
                   {trail.node.blockchainHash.slice(0, 10)}...
-                </span>
+                </a>
               </div>
             )}
           </div>
@@ -311,7 +316,7 @@ export default function ArticleTrail() {
                           </span>
                         </div>
                         <p className="text-sm text-nb-ink/80">{report.summary}</p>
-                        {report.evidence_links?.length > 0 && (
+                        {report.evidence_links?.length > 0 && report.agent_name?.toLowerCase().includes('generic') && (
                           <div className="mt-2 flex flex-wrap gap-2">
                             {report.evidence_links.slice(0, 3).map((link, i) => (
                               <a
