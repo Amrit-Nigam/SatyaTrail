@@ -65,24 +65,24 @@ export default function TrailGraph({ nodes, edges, selectedNodeId, onSelectNode 
   // Empty state
   if (!nodes || nodes.length === 0) {
     return (
-      <div className="h-[500px] flex items-center justify-center bg-nb-bg rounded-nb border-4 border-nb-ink border-dashed">
+      <div className="h-[500px] flex items-center justify-center bg-transparent rounded-lg border border-nb-ink/30 border-dashed">
         <div className="text-center">
           <Box className="w-12 h-12 mx-auto mb-3 text-nb-ink/40" />
-          <p className="text-nb-ink/60 font-mono text-sm">No trail data available</p>
-          <p className="text-nb-ink/40 font-mono text-xs mt-1">Submit a claim to generate a trail</p>
+          <p className="text-nb-ink/70 italic text-sm">No trail data available</p>
+          <p className="text-nb-ink/50 italic text-xs mt-1">Submit a claim to generate a trail</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="relative">
+    <div className="relative overflow-visible">
       {/* Controls toolbar */}
       <div className="absolute top-4 right-4 z-10 flex gap-2">
         <button
           onClick={toggleAutoRotate}
-          className={`p-2 border-2 border-nb-ink rounded-nb shadow-nb-sm hover:-translate-y-0.5 transition-transform ${
-            autoRotate ? 'bg-nb-yellow' : 'bg-nb-card'
+          className={`p-2 border border-nb-ink/30 rounded-lg hover:-translate-y-0.5 transition-transform ${
+            autoRotate ? 'bg-black text-white' : 'bg-white/60 text-black'
           }`}
           title={autoRotate ? 'Stop rotation' : 'Auto rotate'}
         >
@@ -90,8 +90,8 @@ export default function TrailGraph({ nodes, edges, selectedNodeId, onSelectNode 
         </button>
         <button
           onClick={toggleCompactView}
-          className={`p-2 border-2 border-nb-ink rounded-nb shadow-nb-sm hover:-translate-y-0.5 transition-transform ${
-            isCompactView ? 'bg-nb-cyan' : 'bg-nb-card'
+          className={`p-2 border border-nb-ink/30 rounded-lg hover:-translate-y-0.5 transition-transform ${
+            isCompactView ? 'bg-black text-white' : 'bg-white/60 text-black'
           }`}
           title="Toggle compact view (C)"
         >
@@ -99,22 +99,15 @@ export default function TrailGraph({ nodes, edges, selectedNodeId, onSelectNode 
         </button>
         <button
           onClick={handleReset}
-          className="p-2 bg-nb-card border-2 border-nb-ink rounded-nb shadow-nb-sm hover:-translate-y-0.5 transition-transform"
+          className="p-2 bg-white/60 text-black border border-nb-ink/30 rounded-lg hover:-translate-y-0.5 transition-transform"
           title="Reset view"
         >
           <Maximize2 className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Instructions overlay */}
-      <div className="absolute bottom-4 left-4 z-10 bg-nb-card/95 backdrop-blur-sm border-2 border-nb-ink rounded-nb px-3 py-2 shadow-nb-sm">
-        <p className="text-xs font-mono text-nb-ink">
-          <span className="font-bold">Drag</span> to rotate · <span className="font-bold">Scroll</span> to zoom · <span className="font-bold">Right-click</span> to pan
-        </p>
-      </div>
-
       {/* 3D Canvas */}
-      <div className="h-[500px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-nb border-4 border-nb-ink overflow-hidden shadow-nb">
+      <div className="h-[500px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-lg border border-nb-ink/30 overflow-hidden shadow-nb relative">
         <Canvas
           camera={{
             position: isCompactView ? [2, 2, 2] : [3, 2.5, 3],
@@ -160,15 +153,22 @@ export default function TrailGraph({ nodes, edges, selectedNodeId, onSelectNode 
         </Canvas>
       </div>
 
+      {/* Instructions overlay - moved outside canvas */}
+      <div className="mt-2 bg-white/90 backdrop-blur-sm border border-nb-ink/30 rounded-lg px-3 py-2 inline-block">
+        <p className="text-xs text-black">
+          <span className="font-bold">Drag</span> to rotate · <span className="font-bold">Scroll</span> to zoom · <span className="font-bold">Right-click</span> to pan
+        </p>
+      </div>
+
       {/* Legend */}
       <div className="flex gap-4 mt-4 justify-center flex-wrap">
         {['origin', 'amplifier', 'debunker', 'commentary'].map((role) => (
           <div key={role} className="flex items-center gap-2 text-sm">
             <div
-              className="w-5 h-5 rounded-full border-3 border-nb-ink shadow-nb-xs"
+              className="w-5 h-5 rounded-full border border-nb-ink/30"
               style={{ backgroundColor: getRoleColor(role) }}
             />
-            <span className="text-nb-ink font-medium">{getRoleLabel(role)}</span>
+            <span className="text-black font-semibold">{getRoleLabel(role)}</span>
           </div>
         ))}
       </div>
@@ -193,26 +193,26 @@ function SelectedNodeInfo({ nodes, selectedNodeId }) {
   if (!selectedNode) return null
   
   return (
-    <div className="mt-4 p-4 bg-nb-card border-4 border-nb-ink rounded-nb shadow-nb">
+    <div className="mt-4 p-4 bg-transparent border border-nb-ink/30 rounded-lg">
       <div className="flex items-start gap-3">
         <div
-          className="w-4 h-4 rounded-full border-2 border-nb-ink flex-shrink-0 mt-1"
+          className="w-4 h-4 rounded-full border border-nb-ink/30 flex-shrink-0 mt-1"
           style={{ backgroundColor: getRoleColor(selectedNode.role) }}
         />
         <div className="flex-1 min-w-0">
-          <h4 className="font-bold text-nb-ink truncate">
+          <h4 className="font-bold text-black truncate">
             {selectedNode.source?.name || 'Unknown Source'}
           </h4>
-          <p className="text-sm text-nb-ink/70 font-mono">
+          <p className="text-sm text-nb-ink/70 italic">
             {getRoleLabel(selectedNode.role)}
           </p>
           {selectedNode.headline && (
-            <p className="text-sm text-nb-ink/80 mt-2 line-clamp-2">
+            <p className="text-sm text-nb-ink/90 mt-2 line-clamp-2">
               {selectedNode.headline}
             </p>
           )}
           {selectedNode.publishedAt && (
-            <p className="text-xs text-nb-ink/50 font-mono mt-2">
+            <p className="text-xs text-nb-ink/70 italic mt-2">
               {new Date(selectedNode.publishedAt).toLocaleDateString()}
             </p>
           )}
