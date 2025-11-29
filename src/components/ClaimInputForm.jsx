@@ -2,7 +2,6 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Send, Link as LinkIcon, FileText } from 'lucide-react'
-import NBButton from './NBButton'
 import { cn } from '../lib/utils'
 import { verificationService } from '../lib/services/verificationService'
 
@@ -49,18 +48,18 @@ export default function ClaimInputForm({ defaultText = '', defaultUrl = '', onSu
   return (
     <form
       onSubmit={handleSubmit(handleFormSubmit)}
-      className="border-t-2 border-nb-ink bg-nb-card p-4"
+      className="border-t border-nb-ink/20 bg-white/60 p-4"
     >
       {/* Input Type Toggle */}
-      <div className="flex gap-2 mb-3">
+      <div className="flex gap-2 mb-3 flex-wrap">
         <button
           type="button"
           onClick={() => setValue('inputType', 'text')}
           className={cn(
-            'flex items-center gap-2 px-3 py-1.5 rounded-nb border-2 border-nb-ink text-sm font-medium transition-colors',
+            'flex items-center gap-2 px-3 py-1.5 rounded-lg border border-nb-ink/30 text-sm font-bold transition-colors',
             inputType === 'text'
-              ? 'bg-nb-ink text-white'
-              : 'bg-transparent hover:bg-nb-ink/5'
+              ? 'bg-black text-white border-black'
+              : 'bg-white/60 text-black hover:bg-black hover:text-white'
           )}
         >
           <FileText className="w-4 h-4" />
@@ -70,10 +69,10 @@ export default function ClaimInputForm({ defaultText = '', defaultUrl = '', onSu
           type="button"
           onClick={() => setValue('inputType', 'url')}
           className={cn(
-            'flex items-center gap-2 px-3 py-1.5 rounded-nb border-2 border-nb-ink text-sm font-medium transition-colors',
+            'flex items-center gap-2 px-3 py-1.5 rounded-lg border border-nb-ink/30 text-sm font-bold transition-colors',
             inputType === 'url'
-              ? 'bg-nb-ink text-white'
-              : 'bg-transparent hover:bg-nb-ink/5'
+              ? 'bg-black text-white border-black'
+              : 'bg-white/60 text-black hover:bg-black hover:text-white'
           )}
         >
           <LinkIcon className="w-4 h-4" />
@@ -83,7 +82,7 @@ export default function ClaimInputForm({ defaultText = '', defaultUrl = '', onSu
         {/* Example Dropdown */}
         <select
           onChange={handleExampleSelect}
-          className="ml-auto px-3 py-1.5 border-2 border-nb-ink rounded-nb bg-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-4 focus:ring-nb-accent/30"
+          className="ml-auto px-3 py-1.5 border border-nb-ink/30 rounded-lg bg-white text-sm font-bold cursor-pointer focus:outline-none focus:border-black text-black"
           defaultValue=""
           data-testid="verify-example-claim"
         >
@@ -103,8 +102,8 @@ export default function ClaimInputForm({ defaultText = '', defaultUrl = '', onSu
             {...register('inputValue')}
             placeholder="Paste the news article text or claim you want to verify..."
             className={cn(
-              'flex-1 min-h-[80px] max-h-[200px] p-3 border-2 border-nb-ink rounded-nb bg-white resize-y focus:outline-none focus:ring-4 focus:ring-nb-accent/30',
-              errors.inputValue && 'border-nb-error ring-2 ring-nb-error/30'
+              'flex-1 min-h-[80px] max-h-[200px] p-3 border border-nb-ink/30 rounded-lg bg-white resize-y focus:outline-none focus:border-black text-black placeholder:text-nb-ink/50',
+              errors.inputValue && 'border-red-500'
             )}
             data-testid="chat-input"
           />
@@ -114,28 +113,32 @@ export default function ClaimInputForm({ defaultText = '', defaultUrl = '', onSu
             {...register('inputValue')}
             placeholder="Enter article URL..."
             className={cn(
-              'flex-1 p-3 border-2 border-nb-ink rounded-nb bg-white focus:outline-none focus:ring-4 focus:ring-nb-accent/30',
-              errors.inputValue && 'border-nb-error ring-2 ring-nb-error/30'
+              'flex-1 p-3 border border-nb-ink/30 rounded-lg bg-white focus:outline-none focus:border-black text-black placeholder:text-nb-ink/50',
+              errors.inputValue && 'border-red-500'
             )}
             data-testid="chat-input"
           />
         )}
 
-        <NBButton
+        <button
           type="submit"
-          variant="primary"
           disabled={isSubmitting || disabled}
-          className="self-end"
+          className={cn(
+            "self-end px-6 py-3 border border-nb-ink/30 rounded-lg uppercase tracking-wide text-sm font-bold transition-colors inline-flex items-center gap-2",
+            disabled
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-black text-white hover:bg-black/90'
+          )}
           data-testid="chat-send"
         >
           <Send className="w-5 h-5" />
           {disabled ? 'Verifying...' : 'Check'}
-        </NBButton>
+        </button>
       </div>
 
       {/* Error Message */}
       {errors.inputValue && (
-        <p className="mt-2 text-sm text-nb-error font-medium">
+        <p className="mt-2 text-sm text-red-600 font-semibold">
           {errors.inputValue.message}
         </p>
       )}
