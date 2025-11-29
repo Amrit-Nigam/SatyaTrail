@@ -6,6 +6,7 @@
 
 const logger = require('../utils/logger');
 const orchestrator = require('../routes/agents/orchestrator');
+const { analyzeImageWithVision } = require('../services/imageAnalysisService');
 
 // Rate limiting map (userId -> last request timestamp)
 const rateLimitMap = new Map();
@@ -641,6 +642,155 @@ const createProgressBar = (value) => {
   return '█'.repeat(filled) + '░'.repeat(empty);
 };
 
+/**
+ * Handle photo messages
+ */
+const handlePhoto = async (ctx) => {
+  const userId = ctx.from?.id;
+  const chatId = ctx.chat?.id;
+  const chatType = ctx.chat?.type;
+  const isGroup = chatType === 'group' || chatType === 'supergroup';
+  const caption = ctx.message?.caption || '';
+  
+  // In groups, only respond if mentioned
+  if (isGroup) {
+    const mentioned = isBotMentioned(ctx);
+    if (!mentioned) {
+      logger.bot('telegram', 'Photo in group but not mentioned, ignoring', { userId, chatId });
+      return;
+    }
+  }
+  
+  console.log('[Telegram] 📸 Photo received:', {
+    userId,
+    chatType,
+    hasCaption: !!caption,
+    captionPreview: caption.substring(0, 50),
+  });
+  
+  logger.bot('telegram', 'Photo message received', {
+    userId,
+    chatType,
+    hasCaption: !!caption,
+  });
+  
+  // Check rate limit
+  const rateLimit = checkRateLimit(userId);
+  if (rateLimit.limited) {
+    return ctx.reply(`⏳ Please wait ${rateLimit.waitTime} seconds before your next verification.`, {
+      reply_to_message_id: ctx.message.message_id
+    });
+  }
+  
+  // Get the largest photo (best quality)
+  const photos = ctx.message.photo;
+  if (!photos || photos.length === 0) {
+    return ctx.reply('❌ Could not process the photo. Please try again.', {
+      reply_to_message_id: ctx.message.message_id
+    });
+  }
+  
+  const largestPhoto = photos[photos.length - 1]; // Last one is largest
+  
+  // Send processing message
+  const processingMsg = await ctx.reply('🔄 Analyzing image for authenticity... This may take a moment.', {
+    reply_to_message_id: ctx.message.message_id
+  });
+  
+  try {
+    // Get file URL from Telegram
+    const fileLink = await ctx.telegram.getFileLink(largestPhoto.file_id);
+    const imageUrl = fileLink.href;
+    
+    console.log('[Telegram] 📸 Got image URL:', imageUrl.substring(0, 80) + '...');
+    
+    // Analyze the image using GPT-4o Vision
+    const analysisResult = await analyzeImageWithVision(imageUrl, null, {
+      caption,
+      source: 'telegram',
+      chatType,
+    });
+    
+    console.log('[Telegram] 📸 Analysis result:', analysisResult);
+    
+    // Delete processing message
+    try {
+      await ctx.telegram.deleteMessage(chatId, processingMsg.message_id);
+    } catch (e) {
+      logger.warn('Could not delete processing message', { error: e.message });
+    }
+    
+    // Build result message
+    const verdictEmoji = {
+      AUTHENTIC: '✅',
+      SUSPICIOUS: '⚠️',
+      FAKE: '❌',
+    };
+    
+    const aiGeneratedEmoji = {
+      YES: '🤖',
+      NO: '📷',
+      UNCERTAIN: '❓',
+    };
+    
+    const emoji = verdictEmoji[analysisResult.verdict] || '❓';
+    const aiEmoji = aiGeneratedEmoji[analysisResult.aiGenerated] || '❓';
+    const confidenceBar = createProgressBar(analysisResult.confidence);
+    
+    let resultMessage = `
+${emoji} *Image Authenticity Analysis*
+
+*Verdict:* ${analysisResult.verdict}
+*Confidence:* ${confidenceBar} ${analysisResult.confidence}%
+
+${aiEmoji} *AI Generated:* ${analysisResult.aiGenerated}
+
+📝 *Analysis:*
+${analysisResult.reasoning}
+    `.trim();
+    
+    // Add manipulation signs if any
+    if (analysisResult.manipulationSigns && analysisResult.manipulationSigns.length > 0) {
+      resultMessage += `\n\n⚠️ *Manipulation Indicators:*`;
+      analysisResult.manipulationSigns.forEach(sign => {
+        resultMessage += `\n• ${sign}`;
+      });
+    }
+    
+    // Add disclaimer
+    resultMessage += `\n\n_Note: This analysis is AI-assisted and may not be 100% accurate._`;
+    
+    await ctx.reply(resultMessage, {
+      parse_mode: 'Markdown',
+      reply_to_message_id: ctx.message.message_id
+    });
+    
+    logger.bot('telegram', 'Image analysis sent', {
+      userId,
+      verdict: analysisResult.verdict,
+      confidence: analysisResult.confidence,
+      aiGenerated: analysisResult.aiGenerated,
+    });
+    
+  } catch (error) {
+    console.error('[Telegram] 📸 Image analysis error:', error.message);
+    logger.error('Telegram image analysis failed', {
+      userId,
+      error: error.message,
+      stack: error.stack
+    });
+    
+    // Delete processing message
+    try {
+      await ctx.telegram.deleteMessage(chatId, processingMsg.message_id);
+    } catch (e) {}
+    
+    await ctx.reply('❌ Sorry, image analysis failed. Please try again later.', {
+      reply_to_message_id: ctx.message.message_id
+    });
+  }
+};
+
 module.exports = {
   handleStart,
   handleHelp,
@@ -648,6 +798,7 @@ module.exports = {
   handleStatus,
   handleText,
   handleMention,
-  handleInlineQuery
+  handleInlineQuery,
+  handlePhoto
 };
 
