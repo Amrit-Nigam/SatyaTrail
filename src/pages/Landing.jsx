@@ -18,7 +18,7 @@ import NBButton from '../components/NBButton'
 import NewsTile from '../components/NewsTile'
 import VerdictBadge from '../components/VerdictBadge'
 import { articlesService } from '../lib/services/articlesService'
-import { cn } from '../lib/utils'
+import { cn, truncate, timeAgo } from '../lib/utils'
 
 const steps = [
   {
@@ -115,42 +115,63 @@ export default function Landing() {
   }, [])
 
   return (
-    <div className="min-h-screen">
+    <div 
+      className="min-h-screen bg-nb-bg"
+      style={{
+        backgroundImage: "url('/bg-img.svg')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+        backgroundColor: '#e3cab8'
+      }}
+    >
       {/* Hero Section */}
-      <section className="relative py-20 px-4 overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-10 left-10 w-32 h-32 bg-nb-accent rounded-full" />
-          <div className="absolute bottom-20 right-20 w-48 h-48 bg-nb-accent-2 rounded-full" />
-          <div className="absolute top-1/2 left-1/3 w-24 h-24 bg-nb-warn rounded-full" />
-        </div>
+      <section className="relative py-24 px-4 overflow-hidden pt-32">
+        {/* Design SVG overlay - black elements */}
+        <div 
+          className="absolute inset-0 opacity-5"
+          style={{
+            backgroundImage: 'url(/design.svg)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            filter: 'invert(1)'
+          }}
+        />
 
-        <div className="max-w-7xl mx-auto relative">
+        <div className="max-w-6xl mx-auto relative">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center max-w-3xl mx-auto"
+            transition={{ duration: 0.8 }}
+            className="text-center max-w-4xl mx-auto"
           >
-            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-nb-ink leading-tight mb-6">
+            <div className="mb-8">
+              <img 
+                src="/design.svg" 
+                alt="" 
+                className="mx-auto h-16 opacity-20 invert"
+              />
+            </div>
+            <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-bold text-nb-ink leading-[1.1] mb-8 tracking-tight">
               See how a story spreads{' '}
-              <span className="text-nb-accent underline decoration-4 decoration-nb-ink underline-offset-4">
+              <span className="italic font-normal">
                 before
               </span>{' '}
               you trust it.
             </h1>
-            <p className="text-lg sm:text-xl text-nb-ink/70 mb-8 max-w-2xl mx-auto">
+            <p className="text-xl sm:text-2xl text-nb-ink/90 mb-12 max-w-2xl mx-auto leading-relaxed font-normal">
               SatyaTrail maps news origins, tracks propagation patterns, and helps you verify claims
               with transparent, source-backed insights.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
               <Link to="/feed" data-testid="cta-feed">
-                <NBButton variant="primary" size="lg" icon={ArrowRight}>
+                <NBButton variant="primary" size="lg" icon={ArrowRight} className="bg-nb-ink text-nb-bg hover:bg-nb-ink/90 border-nb-ink shadow-none">
                   Browse the News Feed
                 </NBButton>
               </Link>
               <Link to="/verify" data-testid="cta-verify">
-                <NBButton variant="secondary" size="lg" icon={CheckCircle}>
+                <NBButton variant="ghost" size="lg" icon={CheckCircle} className="border-2 border-nb-ink text-nb-ink hover:bg-nb-ink/5">
                   Verify a Claim
                 </NBButton>
               </Link>
@@ -159,216 +180,350 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Trending News Grid */}
-      <section className="py-16 px-4 bg-nb-card border-y-2 border-nb-ink">
+      {/* Newspaper-Style Main Content */}
+      <section className="py-12 px-4 border-t border-b border-nb-ink/20">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="font-display text-2xl sm:text-3xl font-bold text-nb-ink">
-              Trending Stories
-            </h2>
-            <Link
-              to="/feed"
-              className="flex items-center gap-2 text-nb-ink/70 hover:text-nb-ink transition-colors font-medium"
-            >
-              View all
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {isLoading ? (
-              <div className="col-span-full text-center py-8 text-nb-ink/70">
-                Loading trending stories...
-              </div>
-            ) : trendingArticles.length === 0 ? (
-              <div className="col-span-full text-center py-8 text-nb-ink/70">
-                No trending stories available yet. Verify a claim to get started!
-              </div>
-            ) : (
-              trendingArticles.map((article, index) => (
-                <motion.div
-                  key={article.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: index * 0.1 }}
-                >
-                  <NewsTile
-                    id={article.id}
-                    headline={article.headline}
-                    sourceName={article.sourceName}
-                    publishedAt={article.publishedAt}
-                    category={article.category}
-                    snippet={article.body}
-                    verdict={article.verdict}
+          {/* Three Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left Column - Article List */}
+            <div className="lg:col-span-3 space-y-6">
+              {isLoading ? (
+                <div className="text-center py-8 text-nb-ink/70 italic">
+                  Loading articles...
+                </div>
+              ) : trendingArticles.length === 0 ? (
+                <div className="text-center py-8 text-nb-ink/70 italic">
+                  No articles available yet
+                </div>
+              ) : (
+                trendingArticles.slice(0, 3).map((article, index) => (
+                  <div key={article.id} className={cn(index !== 2 && 'border-b border-nb-ink/20 pb-6')}>
+                    <Link to={`/article/${article.id}`} className="block group">
+                      <h3 className="font-display font-bold text-lg leading-tight mb-2 group-hover:text-nb-ink/70 transition-colors">
+                        {article.headline}
+                      </h3>
+                      <p className="text-sm text-nb-ink/70 mb-3 line-clamp-2">
+                        {truncate(article.body, 120)}
+                      </p>
+                      <div className="flex items-center justify-between text-xs text-nb-ink/60">
+                        <span className="font-medium">{article.sourceName}</span>
+                        <span>{timeAgo(article.publishedAt)}</span>
+                      </div>
+                    </Link>
+                  </div>
+                ))
+              )}
+              
+              {/* Newsletter Subscription */}
+              <div className="mt-8 pt-6 border-t-2 border-nb-ink/30">
+                <h4 className="font-display font-bold text-lg mb-3">Subscribe Our Newsletter</h4>
+                <form className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="Enter your email"
+                    className="flex-1 px-4 py-2 border border-nb-ink/30 bg-white/50 text-sm focus:outline-none focus:border-nb-ink"
                   />
-                </motion.div>
-              ))
-            )}
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-nb-ink text-nb-bg hover:bg-nb-ink/90 transition-colors"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Center Column - Main Story */}
+            <div className="lg:col-span-6">
+              {isLoading ? (
+                <div className="bg-transparent border border-nb-ink/30 p-6 text-center">
+                  <p className="text-nb-ink/70 italic">Loading main story...</p>
+                </div>
+              ) : trendingArticles.length === 0 ? (
+                <div className="bg-transparent border border-nb-ink/30 p-6 text-center">
+                  <p className="text-nb-ink/70 italic">No stories available yet. Verify a claim to get started!</p>
+                </div>
+              ) : (
+                <div className="bg-transparent border border-nb-ink/30 p-6">
+                  <div className="inline-block bg-red-600 text-white px-3 py-1 text-xs font-bold uppercase tracking-wider mb-4">
+                    MAIN STORY
+                  </div>
+                  {trendingArticles[0] && (
+                    <Link to={`/article/${trendingArticles[0].id}`} className="block group">
+                      <div className="mb-4 bg-nb-ink/10 h-64 flex items-center justify-center border border-nb-ink/20">
+                        <span className="text-nb-ink/40 text-sm">Article Image</span>
+                      </div>
+                      <h2 className="font-display font-bold text-2xl lg:text-3xl leading-tight mb-4 group-hover:text-nb-ink/70 transition-colors">
+                        {trendingArticles[0].headline}
+                      </h2>
+                      <p className="text-base text-nb-ink/80 mb-4 leading-relaxed">
+                        {truncate(trendingArticles[0].body, 200)}
+                      </p>
+                      <div className="flex items-center justify-between text-sm text-nb-ink/60 border-t border-nb-ink/20 pt-4">
+                        <div>
+                          <span className="font-medium">By {trendingArticles[0].sourceName}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <VerdictBadge verdict={trendingArticles[0].verdict} size="sm" />
+                          <span>{timeAgo(trendingArticles[0].publishedAt)}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Right Column - Trending Topics & More Articles */}
+            <div className="lg:col-span-3 space-y-6">
+              {/* Trending Topics */}
+              <div className="border-b border-nb-ink/20 pb-6">
+                <div className="mb-4">
+                  <span className="text-red-600 font-bold text-sm uppercase tracking-wider">TRENDING TOPIC</span>
+                  <span className="text-nb-ink/60 text-sm ml-2 italic">LATEST UPDATE</span>
+                </div>
+                <div className="space-y-4">
+                  {isLoading ? (
+                    <p className="text-xs text-nb-ink/60 italic">Loading...</p>
+                  ) : trendingArticles.length === 0 ? (
+                    <p className="text-xs text-nb-ink/60 italic">No trending topics yet</p>
+                  ) : (
+                    trendingArticles.slice(0, 5).map((article, index) => (
+                      <Link key={article.id} to={`/article/${article.id}`} className="flex gap-3 group">
+                        <span className="text-red-600 font-bold text-lg flex-shrink-0">#{index + 1}</span>
+                        <h4 className="font-display font-semibold text-sm leading-tight group-hover:text-nb-ink/70 transition-colors">
+                          {article.headline}
+                        </h4>
+                      </Link>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* More Articles with Thumbnails */}
+              <div className="space-y-4">
+                {isLoading ? (
+                  <p className="text-xs text-nb-ink/60 italic">Loading...</p>
+                ) : trendingArticles.length > 3 ? (
+                  trendingArticles.slice(3, 6).map((article) => (
+                    <Link key={article.id} to={`/article/${article.id}`} className="flex gap-3 group">
+                      <div className="w-20 h-20 flex-shrink-0 bg-nb-ink/10 border border-nb-ink/20 flex items-center justify-center">
+                        <span className="text-nb-ink/30 text-xs">IMG</span>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-display font-semibold text-sm leading-tight mb-1 group-hover:text-nb-ink/70 transition-colors line-clamp-2">
+                          {article.headline}
+                        </h4>
+                        <p className="text-xs text-nb-ink/60 italic">{timeAgo(article.publishedAt)}</p>
+                      </div>
+                    </Link>
+                  ))
+                ) : null}
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="py-16 px-4">
+      {/* How It Works - Newspaper Style */}
+      <section className="py-16 px-4 border-t border-b border-black/20">
         <div className="max-w-7xl mx-auto">
-          <h2 className="font-display text-2xl sm:text-3xl font-bold text-nb-ink text-center mb-12">
-            How SatyaTrail Works
-          </h2>
+          <div className="text-center mb-12">
+            <span className="inline-block bg-black text-white px-4 py-2 text-xs font-bold uppercase tracking-wider mb-4">
+              HOW IT WORKS
+            </span>
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-black mb-4">
+              How SatyaTrail Works
+            </h2>
+            <p className="text-sm text-black/80 max-w-2xl mx-auto">
+              Our four-step process ensures accurate verification and transparent reporting
+            </p>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {steps.map((step, index) => (
-              <motion.div
+              <div
                 key={step.number}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
+                className="bg-transparent border border-black/30 p-6 text-center rounded-lg"
               >
-                <NBCard className="h-full text-center">
-                  <div className="w-12 h-12 mx-auto mb-4 bg-nb-accent rounded-nb border-2 border-nb-ink flex items-center justify-center font-display font-bold text-lg">
-                    {step.number}
-                  </div>
-                  <h3 className="font-display font-semibold text-xl mb-2">{step.title}</h3>
-                  <p className="text-nb-ink/70 text-sm">{step.description}</p>
-                </NBCard>
-              </motion.div>
+                <div className="w-12 h-12 mx-auto mb-4 bg-black text-white flex items-center justify-center font-display font-bold text-lg rounded-lg">
+                  {step.number}
+                </div>
+                <h3 className="font-display font-bold text-xl mb-3 text-black">{step.title}</h3>
+                <p className="text-black/80 text-sm leading-relaxed">{step.description}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Feature Highlights */}
-      <section className="py-16 px-4 bg-nb-ink text-white">
+      {/* Feature Highlights - Newspaper Style */}
+      <section className="py-16 px-4 border-t border-b border-black/20">
         <div className="max-w-7xl mx-auto">
-          <h2 className="font-display text-2xl sm:text-3xl font-bold text-center mb-12">
-            Feature Highlights
-          </h2>
+          <div className="text-center mb-12">
+            <span className="inline-block bg-black text-white px-4 py-2 text-xs font-bold uppercase tracking-wider mb-4 rounded">
+              FEATURES
+            </span>
+            <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 text-black">
+              Feature Highlights
+            </h2>
+            <p className="text-sm text-black/80 max-w-2xl mx-auto">
+              Powerful tools to help you navigate the news landscape with confidence
+            </p>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {features.map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4 }}
-                className="flex gap-4 p-6 bg-white/10 rounded-nb border-2 border-white/20"
-              >
-                <div className="flex-shrink-0 w-12 h-12 bg-nb-accent rounded-nb border-2 border-white flex items-center justify-center">
-                  <feature.icon className="w-6 h-6 text-nb-ink" />
+            {features.map((feature) => (
+              <div key={feature.title} className="bg-transparent border border-black/30 p-6 flex gap-4 rounded-lg">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-black text-white flex items-center justify-center rounded-lg">
+                    <feature.icon className="w-6 h-6" />
+                  </div>
                 </div>
                 <div>
-                  <h3 className="font-display font-semibold text-lg mb-1">{feature.title}</h3>
-                  <p className="text-white/70 text-sm">{feature.description}</p>
+                  <h3 className="font-display font-bold text-xl mb-2 text-black">{feature.title}</h3>
+                  <p className="text-black/80 text-sm leading-relaxed">{feature.description}</p>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Live Examples Strip */}
-      <section className="py-16 px-4">
+      {/* Live Examples - Newspaper Style */}
+      <section className="py-16 px-4 border-t border-b border-black/20">
         <div className="max-w-7xl mx-auto">
-          <h2 className="font-display text-2xl sm:text-3xl font-bold text-nb-ink text-center mb-4">
-            Live Examples
-          </h2>
-          <p className="text-center text-nb-ink/70 mb-8 max-w-xl mx-auto">
-            See how SatyaTrail evaluates real stories with mock verdicts
-          </p>
+          <div className="text-center mb-12">
+            <span className="inline-block bg-black text-white px-4 py-2 text-xs font-bold uppercase tracking-wider mb-4">
+              LIVE EXAMPLES
+            </span>
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-black mb-4">
+              Live Examples
+            </h2>
+            <p className="text-sm text-black/80 max-w-2xl mx-auto">
+              See how SatyaTrail evaluates real stories with mock verdicts
+            </p>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {isLoading ? (
-              <div className="col-span-full text-center py-8 text-nb-ink/70">
+              <div className="col-span-full text-center py-8 text-black/70 italic">
                 Loading examples...
               </div>
             ) : liveExamples.length === 0 ? (
-              <div className="col-span-full text-center py-8 text-nb-ink/70">
+              <div className="col-span-full text-center py-8 text-black/70 italic">
                 No examples available yet. Verify a claim to see it here!
               </div>
             ) : (
               liveExamples.map((article) => (
-                <NBCard key={article.id} className="flex flex-col gap-3">
-                  <h4 className="font-display font-semibold line-clamp-2">
+                <div key={article.id} className="bg-transparent border border-black/30 p-6 flex flex-col rounded-lg">
+                  <h4 className="font-display font-bold text-lg line-clamp-2 leading-tight mb-3 text-black">
                     {article.headline}
                   </h4>
-                  <p className="text-sm text-nb-ink/60">{article.sourceName}</p>
-                  <div className="flex items-center justify-between mt-auto pt-3 border-t border-nb-ink/10">
+                  <p className="text-xs text-black/70 uppercase tracking-wide mb-4 font-semibold">{article.sourceName}</p>
+                  <div className="flex items-center justify-between mt-auto pt-4 border-t border-black/20">
                     <VerdictBadge verdict={article.verdict} showConfidence confidence={article.confidence} size="sm" />
                     <Link
                       to={`/article/${article.id}`}
-                      className="text-sm font-medium text-nb-accent-2 hover:underline"
+                      className="text-xs font-bold text-black hover:underline uppercase tracking-wide"
                     >
                       View →
                     </Link>
                   </div>
-                </NBCard>
+                </div>
               ))
             )}
           </div>
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="py-16 px-4 bg-nb-card border-t-2 border-nb-ink">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="font-display text-2xl sm:text-3xl font-bold text-nb-ink text-center mb-8">
-            Frequently Asked Questions
-          </h2>
+      {/* FAQ Section - Newspaper Style */}
+      <section className="py-16 px-4 border-t border-black/20">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <span className="inline-block bg-black text-white px-4 py-2 text-xs font-bold uppercase tracking-wider mb-4">
+              ANSWERS FOR YOUR QUESTIONS
+            </span>
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-black mb-4">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-sm text-black/80">
+              Find answers to common questions about SatyaTrail
+            </p>
+          </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {faqs.map((faq, index) => (
-              <NBCard
+              <div
                 key={index}
-                className={cn(
-                  'cursor-pointer transition-shadow',
-                  openFaq === index && 'shadow-nb-sm'
-                )}
-                onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                className="border border-black/30 overflow-hidden bg-transparent rounded-lg"
               >
-                <div className="flex items-center justify-between gap-4">
-                  <h3 className="font-display font-semibold text-lg">{faq.question}</h3>
+                <button
+                  onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                  className="w-full flex items-center justify-between p-5 text-left hover:bg-black/5 transition-colors rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="bg-black text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">
+                      {index + 1}
+                    </div>
+                    <span className="font-display font-bold text-sm text-black">
+                      {faq.question}
+                    </span>
+                  </div>
                   {openFaq === index ? (
-                    <ChevronUp className="w-5 h-5 flex-shrink-0" />
+                    <ChevronUp className="h-4 w-4 text-black/60" />
                   ) : (
-                    <ChevronDown className="w-5 h-5 flex-shrink-0" />
+                    <ChevronDown className="h-4 w-4 text-black/60" />
                   )}
-                </div>
+                </button>
                 {openFaq === index && (
-                  <motion.p
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-4 text-nb-ink/70 border-t border-nb-ink/10 pt-4"
-                  >
-                    {faq.answer}
-                  </motion.p>
+                  <div className="px-5 pb-5">
+                    <div className="pl-9">
+                      <p className="text-black/80 text-xs leading-relaxed">
+                        {faq.answer}
+                      </p>
+                    </div>
+                  </div>
                 )}
-              </NBCard>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="py-16 px-4 bg-nb-accent border-t-2 border-nb-ink">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="font-display text-2xl sm:text-3xl font-bold text-nb-ink mb-4">
-            Ready to explore the news trail?
-          </h2>
-          <p className="text-nb-ink/70 mb-8">
-            Start browsing verified stories or check your own claims with our demo.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/feed">
-              <NBButton variant="primary" size="lg" className="bg-nb-ink text-white hover:bg-nb-ink/90">
-                Browse Feed
-              </NBButton>
-            </Link>
-            <Link to="/verify">
-              <NBButton variant="ghost" size="lg" className="border-nb-ink text-nb-ink">
-                Try Verify
-              </NBButton>
-            </Link>
+      {/* Final CTA - Newspaper Style */}
+      <section className="py-16 px-4 border-t border-b border-nb-ink/20">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-nb-ink rounded-lg p-12 relative overflow-hidden">
+            <div className="absolute inset-0 opacity-20">
+              <img
+                src="/design.svg"
+                alt="Background Design"
+                className="w-full h-full object-cover"
+                style={{ filter: 'invert(1)' }}
+              />
+            </div>
+            <div className="relative z-10">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8 items-center">
+                <div className="lg:col-span-3 text-center lg:text-left">
+                  <h2 className="font-display text-2xl md:text-3xl font-bold text-nb-bg mb-3">
+                    Ready to explore the{' '}
+                    <span className="italic font-normal">news trail</span>?
+                  </h2>
+                  <p className="text-sm text-nb-bg/80 leading-relaxed">
+                    Start browsing verified stories or check your own claims with our demo.
+                  </p>
+                </div>
+                <div className="lg:col-span-1 flex justify-center lg:justify-end">
+                  <Link to="/feed">
+                    <button className="bg-white hover:bg-gray-100 text-nb-ink px-6 lg:px-8 py-3 rounded-full text-sm lg:text-base font-medium transition-colors inline-flex items-center justify-center shadow-lg hover:shadow-xl whitespace-nowrap">
+                      Get Started
+                      <ArrowRight className="h-4 lg:h-5 w-4 lg:w-5 ml-2" />
+                    </button>
+                  </Link>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -7,8 +7,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        "nb-bg": "#F7F5F2",
-        "nb-ink": "#111111",
+        "nb-bg": "#e3cab8",
+        "nb-ink": "#000000",
         "nb-accent": "#6EE7B7",
         "nb-accent-2": "#60A5FA",
         "nb-warn": "#F59E0B",
@@ -25,7 +25,7 @@ export default {
         "nb": "1.25rem"
       },
       fontFamily: {
-        "display": ["Space Grotesk", "system-ui", "sans-serif"],
+        "display": ["Instrument Serif", "Georgia", "serif"],
         "body": ["Inter", "system-ui", "sans-serif"]
       }
     },

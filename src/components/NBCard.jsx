@@ -12,7 +12,7 @@ export default function NBCard({
   return (
     <Component
       className={cn(
-        'bg-nb-card border-2 border-nb-ink shadow-nb rounded-nb p-5',
+        'bg-white/90 border-2 border-black/40 p-6',
         className
       )}
       {...props}

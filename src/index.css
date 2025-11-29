@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,10 +8,17 @@
 @layer base {
   body {
     @apply bg-nb-bg text-nb-ink font-body antialiased;
+    background-color: #e3cab8;
   }
   
   h1, h2, h3, h4, h5, h6 {
     @apply font-display;
+    font-weight: 700;
+    color: #000000;
+  }
+  
+  h1, h2 {
+    letter-spacing: -0.02em;
   }
 }
 
