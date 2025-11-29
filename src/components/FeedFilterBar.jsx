@@ -34,7 +34,7 @@ export default function FeedFilterBar({ showViewToggle = true }) {
   }
 
   return (
-    <div className="bg-nb-card border-2 border-nb-ink rounded-nb p-4 shadow-nb-sm">
+    <div className="bg-transparent border border-nb-ink/30 rounded-lg p-4">
       <div className="flex flex-col lg:flex-row gap-4">
         {/* Search Input */}
         <div className="relative flex-grow">
@@ -44,7 +44,7 @@ export default function FeedFilterBar({ showViewToggle = true }) {
             placeholder="Search headlines, content..."
             value={currentQuery}
             onChange={(e) => updateFilter('q', e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border-2 border-nb-ink rounded-nb bg-white focus:outline-none focus:ring-4 focus:ring-nb-accent/30 transition-shadow"
+            className="w-full pl-10 pr-4 py-2.5 border border-nb-ink/30 rounded-lg bg-white/60 focus:outline-none focus:border-nb-ink transition-shadow"
           />
         </div>
 
@@ -56,7 +56,7 @@ export default function FeedFilterBar({ showViewToggle = true }) {
             <select
               value={currentCategory}
               onChange={(e) => updateFilter('category', e.target.value)}
-              className="px-3 py-2 border-2 border-nb-ink rounded-nb bg-white focus:outline-none focus:ring-4 focus:ring-nb-accent/30 cursor-pointer font-medium"
+              className="px-3 py-2 border border-nb-ink/30 rounded-lg bg-white/60 focus:outline-none focus:border-nb-ink cursor-pointer font-medium text-sm"
               data-testid="feed-filter-category"
             >
               <option value="all">All Categories</option>
@@ -72,7 +72,7 @@ export default function FeedFilterBar({ showViewToggle = true }) {
           <select
             value={currentVerdict}
             onChange={(e) => updateFilter('verdict', e.target.value)}
-            className="px-3 py-2 border-2 border-nb-ink rounded-nb bg-white focus:outline-none focus:ring-4 focus:ring-nb-accent/30 cursor-pointer font-medium"
+            className="px-3 py-2 border border-nb-ink/30 rounded-lg bg-white/60 focus:outline-none focus:border-nb-ink cursor-pointer font-medium text-sm"
             data-testid="feed-filter-verdict"
           >
             <option value="all">All Verdicts</option>
@@ -87,7 +87,7 @@ export default function FeedFilterBar({ showViewToggle = true }) {
           <select
             value={currentSource}
             onChange={(e) => updateFilter('sourceId', e.target.value)}
-            className="px-3 py-2 border-2 border-nb-ink rounded-nb bg-white focus:outline-none focus:ring-4 focus:ring-nb-accent/30 cursor-pointer font-medium"
+            className="px-3 py-2 border border-nb-ink/30 rounded-lg bg-white/60 focus:outline-none focus:border-nb-ink cursor-pointer font-medium text-sm"
           >
             <option value="all">All Sources</option>
             {sources.map((src) => (
@@ -99,14 +99,14 @@ export default function FeedFilterBar({ showViewToggle = true }) {
 
           {/* View Toggle */}
           {showViewToggle && (
-            <div className="flex border-2 border-nb-ink rounded-nb overflow-hidden ml-auto">
+            <div className="flex border border-nb-ink/30 rounded-lg overflow-hidden ml-auto">
               <button
                 onClick={() => setViewMode('grid')}
                 className={cn(
                   'p-2 transition-colors',
                   viewMode === 'grid' 
                     ? 'bg-nb-ink text-white' 
-                    : 'bg-white text-nb-ink hover:bg-nb-ink/10'
+                    : 'bg-white/60 text-nb-ink hover:bg-nb-ink/10'
                 )}
                 title="Grid view"
               >
@@ -115,10 +115,10 @@ export default function FeedFilterBar({ showViewToggle = true }) {
               <button
                 onClick={() => setViewMode('list')}
                 className={cn(
-                  'p-2 transition-colors border-l-2 border-nb-ink',
+                  'p-2 transition-colors border-l border-nb-ink/30',
                   viewMode === 'list' 
                     ? 'bg-nb-ink text-white' 
-                    : 'bg-white text-nb-ink hover:bg-nb-ink/10'
+                    : 'bg-white/60 text-nb-ink hover:bg-nb-ink/10'
                 )}
                 title="List view"
               >

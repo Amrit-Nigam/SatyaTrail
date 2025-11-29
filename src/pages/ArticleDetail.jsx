@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -8,7 +8,8 @@ import {
   Share2,
   ExternalLink,
   CheckCircle,
-  GitBranch
+  GitBranch,
+  Loader2
 } from 'lucide-react'
 import NBCard from '../components/NBCard'
 import NBButton from '../components/NBButton'
@@ -25,28 +26,82 @@ export default function ArticleDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
 
-  const article = useMemo(() => articlesService.getById(id), [id])
-  const source = useMemo(() => article ? sourcesService.getById(article.sourceId) : null, [article])
-  const trail = useMemo(() => nodesService.getTrailByArticleId(id), [id])
-  
-  // Get related articles (same category, different ID)
-  const relatedArticles = useMemo(() => {
-    if (!article) return []
-    const { articles } = articlesService.listAll({ 
-      category: article.category.toLowerCase(), 
-      limit: 4 
-    })
-    return articles.filter(a => a.id !== id).slice(0, 3)
-  }, [article, id])
+  const [article, setArticle] = useState(null)
+  const [source, setSource] = useState(null)
+  const [trail, setTrail] = useState(null)
+  const [relatedArticles, setRelatedArticles] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  if (!article) {
+  // Fetch article data
+  useEffect(() => {
+    const fetchArticleData = async () => {
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        // Fetch article
+        const articleData = await articlesService.getById(id)
+        if (!articleData) {
+          setError('Article not found')
+          setIsLoading(false)
+          return
+        }
+        setArticle(articleData)
+
+        // Fetch source
+        if (articleData.sourceId) {
+          const sourceData = sourcesService.getById(articleData.sourceId)
+          setSource(sourceData)
+        }
+
+        // Fetch trail
+        const trailData = nodesService.getTrailByArticleId(id)
+        setTrail(trailData)
+
+        // Fetch related articles
+        if (articleData.category) {
+          const { articles } = await articlesService.listAll({ 
+            category: articleData.category.toLowerCase(), 
+            limit: 4 
+          })
+          const related = articles.filter(a => a.id !== id).slice(0, 3)
+          setRelatedArticles(related)
+        }
+      } catch (err) {
+        console.error('Failed to fetch article data:', err)
+        setError('Failed to load article. Please try again.')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchArticleData()
+  }, [id])
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-nb-ink/50" />
+            <span className="ml-3 text-nb-ink/60 italic">Loading article...</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error || !article) {
     return (
       <div className="min-h-screen py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <NBCard className="text-center py-12">
             <h2 className="font-display text-2xl font-bold mb-4">Article Not Found</h2>
             <p className="text-nb-ink/60 mb-6">
-              The article you're looking for doesn't exist or has been removed.
+              {error || "The article you're looking for doesn't exist or has been removed."}
             </p>
             <Link to="/feed">
               <NBButton variant="primary">Back to Feed</NBButton>
@@ -65,13 +120,17 @@ export default function ArticleDetail() {
           <Link to="/" className="hover:text-nb-ink transition-colors">Home</Link>
           <span>→</span>
           <Link to="/feed" className="hover:text-nb-ink transition-colors">Feed</Link>
-          <span>→</span>
-          <Link 
-            to={`/feed?category=${article.category.toLowerCase()}`}
-            className="hover:text-nb-ink transition-colors"
-          >
-            {article.category}
-          </Link>
+          {article.category && (
+            <>
+              <span>→</span>
+              <Link 
+                to={`/feed?category=${article.category.toLowerCase()}`}
+                className="hover:text-nb-ink transition-colors"
+              >
+                {article.category}
+              </Link>
+            </>
+          )}
           <span>→</span>
           <span className="text-nb-ink font-medium truncate max-w-xs">
             {article.headline}
@@ -89,9 +148,11 @@ export default function ArticleDetail() {
               <NBCard className="p-6 lg:p-8">
                 {/* Category & Verdict */}
                 <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
-                  <span className="px-3 py-1 bg-nb-accent-2/20 rounded-full border border-nb-ink/20 font-medium text-sm">
-                    {article.category}
-                  </span>
+                  {article.category && (
+                    <span className="px-3 py-1 bg-nb-accent-2/20 rounded-full border border-nb-ink/20 font-medium text-sm">
+                      {article.category}
+                    </span>
+                  )}
                   <VerdictBadge 
                     verdict={article.verdict} 
                     confidence={article.confidence} 
@@ -134,11 +195,17 @@ export default function ArticleDetail() {
 
                 {/* Article Body */}
                 <div className="mt-6 prose prose-lg max-w-none">
-                  {article.body.split('\n\n').map((paragraph, index) => (
-                    <p key={index} className="mb-4 text-nb-ink/80 leading-relaxed">
-                      {paragraph}
+                  {article.body ? (
+                    article.body.split('\n\n').map((paragraph, index) => (
+                      <p key={index} className="mb-4 text-nb-ink/80 leading-relaxed">
+                        {paragraph}
+                      </p>
+                    ))
+                  ) : (
+                    <p className="mb-4 text-nb-ink/80 leading-relaxed italic">
+                      No content available for this article.
                     </p>
-                  ))}
+                  )}
                 </div>
 
                 {/* Actions */}
