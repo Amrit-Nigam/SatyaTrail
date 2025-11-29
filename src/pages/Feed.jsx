@@ -11,6 +11,23 @@ import { articlesService } from '../lib/services/articlesService'
 import { useUIStore } from '../lib/stores/useUIStore'
 import { cn, timeAgo, truncate } from '../lib/utils'
 
+
+const NEWS_IMAGES = [
+  '/news.jpeg',
+  '/news2.webp',
+  '/news3.avif'
+]
+
+const getRandomImage = (id) => {
+  if (!id) return NEWS_IMAGES[0]
+  let hash = 0
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const index = Math.abs(hash) % NEWS_IMAGES.length
+  return NEWS_IMAGES[index]
+}
+
 export default function Feed() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { viewMode } = useUIStore()
@@ -200,8 +217,12 @@ export default function Feed() {
                             FEATURED
                           </div>
                         )}
-                        <div className="mb-4 bg-nb-ink/10 h-48 flex items-center justify-center border border-nb-ink/20 rounded-lg">
-                          <span className="text-nb-ink/40 text-xs">Article Image</span>
+                        <div className="mb-4 bg-nb-ink/10 h-48 flex items-center justify-center border border-nb-ink/20 rounded-lg overflow-hidden">
+                          <img
+                            src={getRandomImage(article.id)}
+                            alt={article.headline}
+                            className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity"
+                          />
                         </div>
                         <h2 className={cn(
                           "font-display font-bold leading-tight mb-3 group-hover:text-nb-ink/70 transition-colors",
@@ -258,8 +279,12 @@ export default function Feed() {
                   <div className="space-y-4">
                     {articles.slice(0, 3).map((article) => (
                       <Link key={article.id} to={`/article/${article.id}`} className="flex gap-3 group">
-                        <div className="w-20 h-20 flex-shrink-0 bg-nb-ink/10 border border-nb-ink/20 flex items-center justify-center rounded-lg">
-                          <span className="text-nb-ink/30 text-xs">IMG</span>
+                        <div className="w-20 h-20 flex-shrink-0 bg-nb-ink/10 border border-nb-ink/20 flex items-center justify-center rounded-lg overflow-hidden">
+                          <img
+                            src={getRandomImage(article.id)}
+                            alt={article.headline}
+                            className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity"
+                          />
                         </div>
                         <div className="flex-1">
                           <h4 className="font-display font-semibold text-sm leading-tight mb-1 group-hover:text-nb-ink/70 transition-colors line-clamp-2">

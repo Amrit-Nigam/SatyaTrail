@@ -85,6 +85,22 @@ const faqs = [
   }
 ]
 
+const NEWS_IMAGES = [
+  '/news.jpeg',
+  '/news2.webp',
+  '/news3.avif'
+]
+
+const getRandomImage = (id) => {
+  if (!id) return NEWS_IMAGES[0]
+  let hash = 0
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const index = Math.abs(hash) % NEWS_IMAGES.length
+  return NEWS_IMAGES[index]
+}
+
 export default function Landing() {
   const [openFaq, setOpenFaq] = useState(null)
   const [trendingArticles, setTrendingArticles] = useState([])
@@ -115,7 +131,7 @@ export default function Landing() {
   }, [])
 
   return (
-    <div 
+    <div
       className="min-h-screen bg-nb-bg"
       style={{
         backgroundImage: "url('/bg-img.svg')",
@@ -128,7 +144,7 @@ export default function Landing() {
       {/* Hero Section */}
       <section className="relative py-24 px-4 overflow-hidden pt-32">
         {/* Design SVG overlay - black elements */}
-        <div 
+        <div
           className="absolute inset-0 opacity-5"
           style={{
             backgroundImage: 'url(/design.svg)',
@@ -147,9 +163,9 @@ export default function Landing() {
             className="text-center max-w-4xl mx-auto"
           >
             <div className="mb-8">
-              <img 
-                src="/design.svg" 
-                alt="" 
+              <img
+                src="/design.svg"
+                alt=""
                 className="mx-auto h-16 opacity-20 invert"
               />
             </div>
@@ -213,7 +229,7 @@ export default function Landing() {
                   </div>
                 ))
               )}
-              
+
               {/* Newsletter Subscription */}
               <div className="mt-8 pt-6 border-t-2 border-nb-ink/30">
                 <h4 className="font-display font-bold text-lg mb-3">Subscribe Our Newsletter</h4>
@@ -250,8 +266,12 @@ export default function Landing() {
                   </div>
                   {trendingArticles[0] && (
                     <Link to={`/article/${trendingArticles[0].id}`} className="block group">
-                      <div className="mb-4 bg-nb-ink/10 h-64 flex items-center justify-center border border-nb-ink/20">
-                        <span className="text-nb-ink/40 text-sm">Article Image</span>
+                      <div className="mb-4 bg-nb-ink/10 h-64 flex items-center justify-center border border-nb-ink/20 overflow-hidden">
+                        <img
+                          src={getRandomImage(trendingArticles[0].id)}
+                          alt={trendingArticles[0].headline}
+                          className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity"
+                        />
                       </div>
                       <h2 className="font-display font-bold text-2xl lg:text-3xl leading-tight mb-4 group-hover:text-nb-ink/70 transition-colors">
                         {trendingArticles[0].headline}
@@ -307,8 +327,12 @@ export default function Landing() {
                 ) : trendingArticles.length > 3 ? (
                   trendingArticles.slice(3, 6).map((article) => (
                     <Link key={article.id} to={`/article/${article.id}`} className="flex gap-3 group">
-                      <div className="w-20 h-20 flex-shrink-0 bg-nb-ink/10 border border-nb-ink/20 flex items-center justify-center">
-                        <span className="text-nb-ink/30 text-xs">IMG</span>
+                      <div className="w-20 h-20 flex-shrink-0 bg-nb-ink/10 border border-nb-ink/20 flex items-center justify-center overflow-hidden">
+                        <img
+                          src={getRandomImage(article.id)}
+                          alt={article.headline}
+                          className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity"
+                        />
                       </div>
                       <div className="flex-1">
                         <h4 className="font-display font-semibold text-sm leading-tight mb-1 group-hover:text-nb-ink/70 transition-colors line-clamp-2">
