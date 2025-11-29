@@ -65,7 +65,7 @@ Right-click on any page to access:
 
 Click the ⚙️ settings icon in the extension popup to configure:
 
-- **API Server URL** - Backend server address (default: `http://localhost:3001`)
+- **API Server URL** - Backend server address (default: `https://satyatrail.onrender.com`)
 - **Auto-verify news sites** - Automatically verify when visiting news sites
 - **Show notifications** - Enable/disable desktop notifications
 

@@ -5,7 +5,7 @@
  */
 
 // Default API URL
-const DEFAULT_API_URL = 'http://localhost:3001';
+const DEFAULT_API_URL = 'https://satyatrail.onrender.com';
 
 // State
 let currentState = 'initial';
@@ -19,12 +19,12 @@ const elements = {
   loadingState: document.getElementById('loadingState'),
   resultsState: document.getElementById('resultsState'),
   errorState: document.getElementById('errorState'),
-  
+
   // Page info
   pageTitle: document.getElementById('pageTitle'),
   pageUrl: document.getElementById('pageUrl'),
   pageFavicon: document.getElementById('pageFavicon'),
-  
+
   // Buttons
   verifyBtn: document.getElementById('verifyBtn'),
   quickVerifyBtn: document.getElementById('quickVerifyBtn'),
@@ -34,7 +34,7 @@ const elements = {
   settingsBtn: document.getElementById('settingsBtn'),
   closeSettingsBtn: document.getElementById('closeSettingsBtn'),
   saveSettingsBtn: document.getElementById('saveSettingsBtn'),
-  
+
   // Loading
   loaderText: document.getElementById('loaderText'),
   steps: {
@@ -43,7 +43,7 @@ const elements = {
     step3: document.getElementById('step3'),
     step4: document.getElementById('step4')
   },
-  
+
   // Results
   verdictContainer: document.getElementById('verdictContainer'),
   verdictBadge: document.getElementById('verdictBadge'),
@@ -63,7 +63,7 @@ const elements = {
   recommendationCard: document.getElementById('recommendationCard'),
   recommendationText: document.getElementById('recommendationText'),
   processingTime: document.getElementById('processingTime'),
-  
+
   // Tooltip
   tooltipContainer: document.getElementById('tooltipContainer'),
   tooltipIcon: document.getElementById('tooltipIcon'),
@@ -75,10 +75,10 @@ const elements = {
   tooltipSources: document.getElementById('tooltipSources'),
   tooltipSourcesList: document.getElementById('tooltipSourcesList'),
   tooltipArrow: document.getElementById('tooltipArrow'),
-  
+
   // Error
   errorMessage: document.getElementById('errorMessage'),
-  
+
   // Settings
   settingsModal: document.getElementById('settingsModal'),
   apiUrl: document.getElementById('apiUrl'),
@@ -94,12 +94,12 @@ const tooltipDataMap = new Map();
  */
 async function init() {
   await loadSettings();
-  
+
   const tab = await getCurrentTab();
   if (tab) {
     displayPageInfo(tab);
   }
-  
+
   setupEventListeners();
   setupTooltipSystem();
 }
@@ -118,7 +118,7 @@ async function getCurrentTab() {
 function displayPageInfo(tab) {
   elements.pageTitle.textContent = tab.title || 'Unknown Page';
   elements.pageUrl.textContent = new URL(tab.url).hostname;
-  
+
   if (tab.favIconUrl) {
     elements.pageFavicon.innerHTML = `<img src="${tab.favIconUrl}" alt="favicon">`;
   } else {
@@ -144,7 +144,7 @@ function setupEventListeners() {
   elements.settingsBtn.addEventListener('click', () => toggleModal(true));
   elements.closeSettingsBtn.addEventListener('click', () => toggleModal(false));
   elements.saveSettingsBtn.addEventListener('click', saveSettings);
-  
+
   // Close tooltip when clicking outside
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.highlight-item') && !e.target.closest('.tooltip-container')) {
@@ -181,8 +181,8 @@ function handleTooltipHide(e) {
   if (highlightItem) {
     // Delay hide to allow moving to tooltip
     setTimeout(() => {
-      if (!elements.tooltipContainer.matches(':hover') && 
-          !document.querySelector('.highlight-item:hover')) {
+      if (!elements.tooltipContainer.matches(':hover') &&
+        !document.querySelector('.highlight-item:hover')) {
         hideTooltip();
       }
     }, 100);
@@ -210,17 +210,17 @@ function handleTooltipClick(e) {
 function showTooltip(element) {
   const tooltipId = element.dataset.tooltipId;
   const data = tooltipDataMap.get(tooltipId);
-  
+
   if (!data) return;
-  
+
   activeTooltipElement = element;
-  
+
   // Set tooltip content
   elements.tooltipIcon.className = `tooltip-icon ${data.type}`;
   elements.tooltipIcon.innerHTML = getTooltipIconSVG(data.type);
   elements.tooltipTitle.textContent = data.title;
   elements.tooltipContent.innerHTML = data.content;
-  
+
   // Confidence bar
   if (data.confidence !== undefined) {
     elements.tooltipConfidence.style.display = 'flex';
@@ -230,20 +230,20 @@ function showTooltip(element) {
   } else {
     elements.tooltipConfidence.style.display = 'none';
   }
-  
+
   // Sources
   if (data.sources && data.sources.length > 0) {
     elements.tooltipSources.style.display = 'block';
-    elements.tooltipSourcesList.innerHTML = data.sources.map(src => 
+    elements.tooltipSourcesList.innerHTML = data.sources.map(src =>
       `<a href="${src}" target="_blank" class="tooltip-source-link">${getDomainFromUrl(src)}</a>`
     ).join('');
   } else {
     elements.tooltipSources.style.display = 'none';
   }
-  
+
   // Position tooltip
   positionTooltip(element);
-  
+
   // Show tooltip
   elements.tooltipContainer.classList.add('visible');
 }
@@ -263,13 +263,13 @@ function positionTooltip(element) {
   const rect = element.getBoundingClientRect();
   const tooltipRect = elements.tooltipContainer.getBoundingClientRect();
   const containerRect = document.querySelector('.main').getBoundingClientRect();
-  
+
   let top = rect.top - 10;
   let left = rect.left + (rect.width / 2);
-  
+
   // Default: show above
   let arrowPosition = 'bottom';
-  
+
   // Check if tooltip would go above viewport
   if (top - tooltipRect.height < containerRect.top) {
     top = rect.bottom + 10;
@@ -277,13 +277,13 @@ function positionTooltip(element) {
   } else {
     top = top - tooltipRect.height;
   }
-  
+
   // Horizontal centering with bounds check
   left = Math.max(10, Math.min(left - (tooltipRect.width / 2), containerRect.right - tooltipRect.width - 10));
-  
+
   elements.tooltipContainer.style.top = `${top}px`;
   elements.tooltipContainer.style.left = `${left}px`;
-  
+
   // Position arrow
   elements.tooltipArrow.className = `tooltip-arrow ${arrowPosition}`;
 }
@@ -327,12 +327,12 @@ function getDomainFromUrl(url) {
  */
 function switchState(state) {
   currentState = state;
-  
+
   elements.initialState.classList.add('hidden');
   elements.loadingState.classList.add('hidden');
   elements.resultsState.classList.add('hidden');
   elements.errorState.classList.add('hidden');
-  
+
   switch (state) {
     case 'initial':
       elements.initialState.classList.remove('hidden');
@@ -365,7 +365,7 @@ function resetProgress() {
 function updateProgress(stepNum, status) {
   const step = elements.steps[`step${stepNum}`];
   if (!step) return;
-  
+
   step.classList.remove('active', 'completed');
   if (status === 'active') {
     step.classList.add('active');
@@ -380,22 +380,22 @@ function updateProgress(stepNum, status) {
 async function handleVerify() {
   switchState('loading');
   tooltipDataMap.clear();
-  
+
   try {
     updateProgress(1, 'active');
     elements.loaderText.textContent = 'Extracting page content...';
-    
+
     const tab = await getCurrentTab();
     const domContent = await extractDOMContent(tab.id);
-    
+
     updateProgress(1, 'completed');
     updateProgress(2, 'active');
     elements.loaderText.textContent = 'Analyzing with AI...';
-    
+
     updateProgress(2, 'completed');
     updateProgress(3, 'active');
     elements.loaderText.textContent = 'Fact-checking claims...';
-    
+
     const settings = await getSettings();
     const response = await fetch(`${settings.apiUrl}/api/v1/verify/extension/analyze`, {
       method: 'POST',
@@ -406,30 +406,30 @@ async function handleVerify() {
         title: tab.title
       })
     });
-    
+
     updateProgress(3, 'completed');
     updateProgress(4, 'active');
     elements.loaderText.textContent = 'Generating verdict...';
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.message || 'Verification failed');
     }
-    
+
     const result = await response.json();
-    
+
     updateProgress(4, 'completed');
     await sleep(400);
-    
+
     verificationResult = result;
     displayResults(result);
     switchState('results');
-    
+
     // Send results to content script for webpage highlighting
     await highlightOnPage(tab.id, result);
-    
+
     await storeResult(tab.url, result);
-    
+
   } catch (error) {
     console.error('Verification failed:', error);
     elements.errorMessage.textContent = error.message || 'An error occurred during verification.';
@@ -443,41 +443,41 @@ async function handleVerify() {
 async function handleQuickVerify() {
   try {
     const tab = await getCurrentTab();
-    
+
     const [{ result: selectedText }] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: () => window.getSelection().toString()
     });
-    
+
     if (!selectedText || selectedText.trim().length < 10) {
       alert('Please select some text on the page first (at least 10 characters).');
       return;
     }
-    
+
     switchState('loading');
     tooltipDataMap.clear();
     elements.loaderText.textContent = 'Quick checking selected text...';
     updateProgress(1, 'completed');
     updateProgress(2, 'active');
-    
+
     const settings = await getSettings();
     const response = await fetch(`${settings.apiUrl}/api/v1/verify/extension/quick`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: selectedText, url: tab.url })
     });
-    
+
     updateProgress(2, 'completed');
     updateProgress(3, 'completed');
     updateProgress(4, 'completed');
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.message || 'Quick verification failed');
     }
-    
+
     const result = await response.json();
-    
+
     verificationResult = {
       overall_verdict: result.verdict,
       confidence_score: result.confidence_score,
@@ -493,18 +493,18 @@ async function handleQuickVerify() {
       suggested_corrections: [],
       supporting_evidence: [],
       summary: result.reason,
-      recommendation: result.verdict === 'True' ? 'This statement appears to be accurate.' : 
-                      result.verdict === 'False' ? 'This statement may contain misinformation.' :
-                      'This statement requires further verification.',
+      recommendation: result.verdict === 'True' ? 'This statement appears to be accurate.' :
+        result.verdict === 'False' ? 'This statement may contain misinformation.' :
+          'This statement requires further verification.',
       processing_time_ms: result.processing_time_ms
     };
-    
+
     displayResults(verificationResult);
     switchState('results');
-    
+
     // Highlight on page
     await highlightOnPage(tab.id, verificationResult);
-    
+
   } catch (error) {
     console.error('Quick verification failed:', error);
     elements.errorMessage.textContent = error.message || 'Quick verification failed.';
@@ -538,14 +538,14 @@ async function extractDOMContent(tabId) {
 function displayResults(result) {
   // Clear previous tooltip data
   tooltipDataMap.clear();
-  
+
   // Verdict
   const verdictClass = getVerdictClass(result.overall_verdict);
   elements.verdictContainer.className = `verdict-container ${verdictClass}`;
   elements.verdictBadge.className = `verdict-badge ${verdictClass}`;
   elements.verdictText.textContent = result.overall_verdict;
   elements.verdictIcon.innerHTML = getVerdictIconSVG(result.overall_verdict);
-  
+
   // Add tooltip for verdict
   const verdictTooltipId = 'verdict-main';
   elements.verdictBadge.dataset.tooltipId = verdictTooltipId;
@@ -555,28 +555,28 @@ function displayResults(result) {
     content: `<p><strong>Analysis Complete</strong></p><p>${result.summary || 'The page has been analyzed for factual accuracy.'}</p>`,
     confidence: result.confidence_score
   });
-  
+
   // Confidence
   const confidence = result.confidence_score || 50;
   elements.confidenceFill.style.width = `${confidence}%`;
   elements.confidenceFill.className = `confidence-fill ${confidence >= 70 ? 'high' : confidence >= 40 ? 'medium' : 'low'}`;
   elements.confidenceScore.textContent = confidence;
-  
+
   // Metadata
   displayMetadata(result.page_metadata);
-  
+
   // Summary
   elements.summaryText.textContent = result.page_summary || result.summary || 'No summary available.';
-  
+
   // Claims with highlights
   displayClaims(result.claim_verdicts || []);
-  
+
   // Corrections
   displayCorrections(result.suggested_corrections || []);
-  
+
   // Evidence
   displayEvidence(result.supporting_evidence || []);
-  
+
   // Recommendation
   if (result.recommendation) {
     elements.recommendationCard.classList.remove('hidden');
@@ -584,7 +584,7 @@ function displayResults(result) {
   } else {
     elements.recommendationCard.classList.add('hidden');
   }
-  
+
   // Processing time
   elements.processingTime.textContent = result.processing_time_ms || 0;
 }
@@ -597,16 +597,16 @@ function displayMetadata(metadata) {
     elements.metadataSection.classList.add('hidden');
     return;
   }
-  
+
   elements.metadataSection.classList.remove('hidden');
-  
+
   const items = [
     { label: 'Topic', value: metadata.topic, icon: '📰' },
     { label: 'Content Type', value: metadata.content_type, icon: '📄' },
     { label: 'Bias', value: metadata.potential_bias, icon: '⚖️' },
     { label: 'Credibility', value: metadata.overall_credibility_signal, icon: '🎯' }
   ].filter(item => item.value);
-  
+
   elements.metadataGrid.innerHTML = items.map((item, idx) => {
     const tooltipId = `metadata-${idx}`;
     tooltipDataMap.set(tooltipId, {
@@ -614,7 +614,7 @@ function displayMetadata(metadata) {
       title: item.label,
       content: `<p>${getMetadataDescription(item.label, item.value)}</p>`
     });
-    
+
     return `
       <div class="metadata-item highlight-item metadata" data-tooltip-id="${tooltipId}">
         <div class="metadata-item-label">${item.icon} ${item.label}</div>
@@ -642,16 +642,16 @@ function getMetadataDescription(label, value) {
  */
 function displayClaims(claims) {
   elements.claimsCount.textContent = claims.length;
-  
+
   if (claims.length === 0) {
     elements.claimsList.innerHTML = '<p style="color: var(--text-muted); font-size: 12px;">No specific claims were extracted for verification.</p>';
     return;
   }
-  
+
   elements.claimsList.innerHTML = claims.map((claim, idx) => {
     const tooltipId = `claim-${idx}`;
     const verdictClass = getVerdictClass(claim.verdict);
-    
+
     tooltipDataMap.set(tooltipId, {
       type: 'claim',
       title: `Claim ${idx + 1}: ${claim.verdict}`,
@@ -662,7 +662,7 @@ function displayClaims(claims) {
       confidence: claim.confidence,
       sources: claim.sources || []
     });
-    
+
     return `
       <div class="highlight-item claim" data-tooltip-id="${tooltipId}">
         <div class="highlight-item-header">
@@ -684,12 +684,12 @@ function displayCorrections(corrections) {
     elements.correctionsSection.classList.add('hidden');
     return;
   }
-  
+
   elements.correctionsSection.classList.remove('hidden');
-  
+
   elements.correctionsList.innerHTML = corrections.map((correction, idx) => {
     const tooltipId = `correction-${idx}`;
-    
+
     tooltipDataMap.set(tooltipId, {
       type: 'correction',
       title: 'Suggested Correction',
@@ -699,7 +699,7 @@ function displayCorrections(corrections) {
       `,
       sources: correction.source ? [correction.source] : []
     });
-    
+
     return `
       <div class="highlight-item correction" data-tooltip-id="${tooltipId}">
         <div class="highlight-item-header">
@@ -718,15 +718,15 @@ function displayCorrections(corrections) {
  */
 function displayEvidence(evidence) {
   elements.evidenceCount.textContent = evidence.length;
-  
+
   if (evidence.length === 0) {
     elements.evidenceList.innerHTML = '<p style="color: var(--text-muted); font-size: 12px;">No external evidence sources found.</p>';
     return;
   }
-  
+
   elements.evidenceList.innerHTML = evidence.slice(0, 6).map((ev, idx) => {
     const tooltipId = `evidence-${idx}`;
-    
+
     tooltipDataMap.set(tooltipId, {
       type: 'evidence',
       title: ev.title || 'Evidence Source',
@@ -736,7 +736,7 @@ function displayEvidence(evidence) {
       `,
       sources: [ev.url]
     });
-    
+
     return `
       <div class="highlight-item evidence" data-tooltip-id="${tooltipId}">
         <div class="highlight-item-header">
@@ -766,7 +766,7 @@ function getVerdictClass(verdict) {
  */
 function getVerdictIconSVG(verdict) {
   const v = verdict?.toLowerCase() || '';
-  
+
   if (v === 'true') {
     return '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>';
   }
@@ -788,7 +788,7 @@ async function handleNewVerify() {
   if (tab) {
     await clearHighlightsOnPage(tab.id);
   }
-  
+
   switchState('initial');
   verificationResult = null;
   tooltipDataMap.clear();
@@ -799,10 +799,10 @@ async function handleNewVerify() {
  */
 async function handleShare() {
   if (!verificationResult) return;
-  
+
   const tab = await getCurrentTab();
   const text = `🛡️ SatyaTrail Verification Report\n\n📄 Page: ${tab.title}\n✅ Verdict: ${verificationResult.overall_verdict}\n📊 Confidence: ${verificationResult.confidence_score}%\n\n${verificationResult.summary || ''}\n\n🔗 Verified with SatyaTrail AI`;
-  
+
   try {
     await navigator.clipboard.writeText(text);
     elements.shareBtn.innerHTML = `
@@ -871,10 +871,10 @@ async function saveSettings() {
     autoVerify: elements.autoVerify.checked,
     showNotifications: elements.showNotifications.checked
   };
-  
+
   await chrome.storage.sync.set(settings);
   toggleModal(false);
-  
+
   elements.saveSettingsBtn.textContent = '✓ Saved!';
   setTimeout(() => {
     elements.saveSettingsBtn.textContent = 'Save Settings';
