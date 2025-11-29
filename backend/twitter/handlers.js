@@ -68,13 +68,15 @@ const extractClaim = (text) => {
  * @param {Object} tweet - Tweet object
  */
 const handleMention = async (bot, tweet) => {
-  const userId = tweet.author_id;
-  const tweetId = tweet.id;
+  const userId = tweet.author_id || tweet.user?.id_str || tweet.user?.id;
+  // Handle both id and id_str formats from Twitter API
+  const tweetId = tweet.id || tweet.id_str;
   
   logger.bot('twitter', 'Processing mention', { 
     tweetId, 
     userId,
-    textPreview: tweet.text?.substring(0, 50)
+    textPreview: tweet.text?.substring(0, 50),
+    hasEntities: !!tweet.entities
   });
   
   // Check rate limit
