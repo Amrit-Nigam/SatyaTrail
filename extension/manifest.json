@@ -27,7 +27,7 @@
     "notifications"
   ],
   "host_permissions": [
-    "http://localhost:3001/*",
+    "https://satyatrail.onrender.com/*",
     "https://api.satyatrail.com/*"
   ],
   "background": {
@@ -35,10 +35,13 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ]
 }
-
