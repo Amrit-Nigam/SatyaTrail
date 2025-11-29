@@ -89,7 +89,7 @@ const convertToMessages = (sessionId, inputValue, result) => {
     id: generateMessageId(),
     sessionId,
     sender: "orchestrator",
-    content: `**Verification Complete**\n\n**Verdict: ${verdictLabel}**\n**Accuracy Score: ${accuracy}%**\n\n${result.metadata?.claim ? `**Claim analyzed:** ${result.metadata.claim}\n\n` : ''}${result.agent_reports?.length > 0 ? `Based on analysis from ${result.agent_reports.length} specialized agent(s)` : 'Analysis complete'}.${result.blockchain_hash ? `\n\n🔗 _Blockchain hash: ${result.blockchain_hash.slice(0, 16)}..._` : ''}${result.metadata?.remaining_uncertainties ? `\n\n⚠️ _Note: ${result.metadata.remaining_uncertainties}_` : ''}`,
+    content: `**Verification Complete**\n\n**Verdict: ${verdictLabel}**\n**Accuracy Score: ${accuracy}%**\n\n${result.metadata?.claim ? `**Claim analyzed:** ${result.metadata.claim}\n\n` : ''}${result.agent_reports?.length > 0 ? `Based on analysis from ${result.agent_reports.length} specialized agent(s)` : 'Analysis complete'}.${result.blockchain_hash ? `\n\n🔗 [Blockchain hash: ${result.blockchain_hash.slice(0, 16)}...](https://sepolia.etherscan.io/tx/${result.blockchain_hash})` : ''}${result.metadata?.remaining_uncertainties ? `\n\n⚠️ _Note: ${result.metadata.remaining_uncertainties}_` : ''}`,
     createdAt: new Date(now.getTime() + (result.agent_reports?.length || 0) * 2000 + 3000).toISOString()
   })
 
@@ -515,9 +515,14 @@ export default function Verify() {
                         size="lg"
                       />
                       {currentSession.blockchainHash && (
-                        <span className="text-xs text-nb-ink/70 font-mono">
+                        <a
+                          href={`https://sepolia.etherscan.io/tx/${currentSession.blockchainHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-nb-ink/70 font-mono hover:text-black hover:underline inline-flex items-center gap-1"
+                        >
                           🔗 {currentSession.blockchainHash.slice(0, 12)}...
-                        </span>
+                        </a>
                       )}
                     </div>
                     
