@@ -39,12 +39,20 @@ const analyzeImageAuthenticity = async (analysisData) => {
           content: `You are an expert digital forensics analyst specializing in image authenticity verification. 
 Your task is to analyze provided metadata and return a single-word verdict: AUTHENTIC, SUSPICIOUS, or FAKE.
 
-Guidelines:
-- AUTHENTIC: Image appears genuine with consistent metadata
-- SUSPICIOUS: Some inconsistencies but not definitively fake
-- FAKE: Clear evidence of tampering or manipulation
+Detailed Analysis Framework:
+1. **Metadata Integrity**: Check for the presence of standard EXIF fields (Make, Model, DateTimeOriginal, ExposureTime, ISO). Missing critical fields suggests stripping/editing.
+2. **Software Traces**: Scrutinize 'Software' tags. 'Adobe Photoshop', 'Lightroom', 'GIMP', or 'Canva' indicate manipulation. Original camera files usually show firmware versions (e.g., 'Ver.1.0').
+3. **Device Consistency**: Verify if the ImageWidth/ImageHeight matches the known resolution of the Camera Make/Model.
+4. **Temporal Consistency**: Check if DateTimeOriginal and DateTimeDigitized match. Significant discrepancies can indicate editing.
+5. **GPS Logic**: If GPS is present, ensure it's not 0,0 or impossible coordinates.
 
-Always provide confidence (0-100) and brief reasoning.`,
+Verdict Guidelines:
+- **AUTHENTIC**: Consistent, complete EXIF data typical of original camera output. No editing software traces.
+- **SUSPICIOUS**: Partial metadata, generic software tags, or minor inconsistencies.
+- **FAKE**: Clear evidence of editing software, conflicting metadata, or impossible values.
+
+Output Format:
+Provide a single-word verdict, a confidence score (0-100), and a concise reasoning highlighting specific metadata findings.`,
         },
         {
           role: 'user',
@@ -105,20 +113,33 @@ const analyzeImageWithVision = async (imageUrl, imageBase64 = null, context = {}
           role: 'system',
           content: `You are an expert digital forensics analyst specializing in image authenticity verification.
 
-Analyze the provided image for signs of:
-1. AI generation (DALL-E, Midjourney, Stable Diffusion artifacts)
-2. Photo manipulation (Photoshop, filters, compositing)
-3. Deepfake indicators
-4. Metadata inconsistencies
-5. Lighting/shadow anomalies
-6. Compression artifacts suggesting re-encoding
+Conduct a rigorous visual and forensic analysis of the provided image. Look for:
+
+1. **AI Generation Artifacts**:
+   - Unnatural textures (skin, hair, background).
+   - Asymmetry in faces, eyes, or accessories.
+   - Garbled text or nonsensical background details.
+   - "Plastic" or overly smooth skin appearance.
+   - Typical AI style signatures (Midjourney lighting, DALL-E composition).
+
+2. **Manipulation & Editing**:
+   - Inconsistent lighting or shadows (shadows falling in different directions).
+   - Mismatched noise patterns or resolution between objects (compositing).
+   - Warping or distortion around edges (liquify tool).
+   - Cloning artifacts (repeated patterns).
+   - Unnatural color grading or filtering.
+
+3. **Physical Inconsistencies**:
+   - Reflections that don't match the environment.
+   - Perspective errors.
+   - Objects defying gravity or physics.
 
 Provide your analysis in this exact format:
 VERDICT: [AUTHENTIC/SUSPICIOUS/FAKE]
 CONFIDENCE: [0-100]
-REASONING: [Brief explanation of key findings]
+REASONING: [Detailed explanation of specific findings]
 AI_GENERATED: [YES/NO/UNCERTAIN]
-MANIPULATION_SIGNS: [List any detected manipulation indicators]`,
+MANIPULATION_SIGNS: [List specific artifacts found, e.g., "Mismatched shadows", "Garbled text"]`,
         },
         {
           role: 'user',
@@ -186,11 +207,10 @@ function buildAnalysisPrompt(data) {
       if (item.exif) {
         prompt += `- EXIF Data:\n`;
         prompt += `  * DateTime: ${item.exif.DateTimeOriginal || 'Missing'}\n`;
-        prompt += `  * GPS: ${
-          item.exif.GPSLatitude
+        prompt += `  * GPS: ${item.exif.GPSLatitude
             ? `${item.exif.GPSLatitude}, ${item.exif.GPSLongitude}`
             : 'Missing'
-        }\n`;
+          }\n`;
         prompt += `  * Camera: ${item.exif.Make || 'Unknown'} ${item.exif.Model || 'Unknown'}\n`;
         prompt += `  * Resolution: ${item.exif.ImageWidth || 'Unknown'}x${item.exif.ImageHeight || 'Unknown'}\n`;
       }
