@@ -66,5 +66,33 @@ router.post('/', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/v1/webhook/twitter/status
+ * Check Twitter bot status
+ */
+router.get('/status', (req, res) => {
+  try {
+    const twitterBot = require('../../twitter/bot');
+    
+    res.json({
+      status: twitterBot.initialized ? 'initialized' : 'not_initialized',
+      operational: twitterBot.isOperational(),
+      authMethod: twitterBot.authMethod || 'none',
+      botUserId: twitterBot.botUserId || null,
+      hasClient: !!twitterBot.client,
+      hasStreamClient: !!twitterBot.streamClient,
+      usePolling: process.env.TWITTER_USE_POLLING === 'true',
+      webhookUrl: process.env.TWITTER_WEBHOOK_URL || null,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 module.exports = router;
 
