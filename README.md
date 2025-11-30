@@ -88,11 +88,5 @@ src/
 | `/verify` | ChatGPT-style claim verification |
 | `/about` | About & methodology |
 
-## Demo Data
 
-The app uses deterministic mock data with 20 articles across 5 sources and 4 NewsNodes. All data is pre-seeded — no backend or API calls are made.
-
-## Note
-
-This is a **frontend-only demo**. No real fact-checking, AI processing, or blockchain anchoring is performed. All verification responses are simulated for demonstration purposes.
 
